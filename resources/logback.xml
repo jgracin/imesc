@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration scan="true" scanInterval="10 seconds">
+  <property name="longpattern" value="%d{yyyy-MM-dd HH:mm:ss} %thread %-5le %lo{25} - %msg %rEx%n"/>
+  <property name="shortpattern" value="%d{yyyy-MM-dd HH:mm:ss} %-5le - %msg %rEx%n"/>
+
+  <appender name="console" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder>
+      <pattern>${longpattern}</pattern>
+    </encoder>
+  </appender>
+
+  <root level="INFO">
+    <appender-ref ref="console"/>
+  </root>
+  <logger name="imesc" level="ALL"/>
+</configuration>
