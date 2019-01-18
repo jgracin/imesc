@@ -15,7 +15,7 @@
                  [ring/ring-json "0.4.0"]
                  [compojure "1.6.1"]
                  [org.apache.kafka/kafka-clients "2.1.0"]
-                 [spootnik/kinsky "0.1.22"]
+                 [spootnik/kinsky "0.1.23"]
                  [com.novemberain/monger "3.5.0"]
                  [clojurewerkz/quartzite "2.1.0"]
                  [environ "1.1.0"]
@@ -28,4 +28,6 @@
              :dev {:dependencies [[org.clojure/test.check "0.9.0"]
                                   [ring "1.7.1"]]
                    :env {:case-repository-type "in-memory"}}
-             :test {:env {:case-repository-type "in-memory"}}})
+             :test {:env {:case-repository-type "in-memory"}
+                    :dependencies [[org.clojure/test.check "0.9.0"]
+                                   [ring "1.7.1"]]}})

@@ -13,7 +13,7 @@
 (defmethod integrant/init-key :kafka/request-consumer [_ {:keys [topic consumer-opts]}]
   (let [consumer (client/consumer consumer-opts
                                   (client/string-deserializer)
-                                  (client/json-deserializer))]
+                                  (client/string-deserializer))]
     (client/subscribe! consumer topic)
     consumer))
 
@@ -40,7 +40,24 @@
                       :max.block.ms 5000
                       :request.timeout.ms 5000}
                      (client/string-serializer)
-                     (client/string-serializer)))
+                     (client/edn-serializer)))
 
-  (client/send! producer "imesc.request" "r2" "{\"action\": \"start\"}")
+  (def dummy-request {:action :start
+                      :process-id "finpoint"
+                      :notifications [{:delay-in-seconds 10
+                                       :channel :debug-console
+                                       :params {:message "First dummy notification to console."}}
+                                      {:delay-in-seconds 15
+                                       :channel :debug-console
+                                       :params {:message "Second dummy notification to console."}}
+                                      {:delay-in-seconds 300
+                                       :channel :email
+                                       :params {:to ["orders@example.com"]
+                                                :subject "You have unconfirmed new orders in RoomOrders."
+                                                :body "Visit https://roomorders.com."}}
+                                      {:delay-in-seconds 600
+                                       :channel :phone
+                                       :params {:number "38599000001"
+                                                :message "new-order-unconfirmed"}}]})
+  (client/send! producer "imesc.request" "r2" dummy-request)
   )

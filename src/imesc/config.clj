@@ -11,5 +11,7 @@
                             :consumer-opts {:bootstrap.servers "localhost:9092"
                                             :group.id "imesc-request-processor"
                                             :enable.auto.commit true
-                                            :max.poll.records 1}}
+                                            :auto.commit.interval.ms 1000
+                                            :max.poll.records 1
+                                            :max.poll.interval.ms 10000}}
    :alarm/repository {:host "localhost" :port 27017}})

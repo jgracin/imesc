@@ -1,6 +1,7 @@
 (ns imesc.core
   (:require [clojure.spec.alpha :as s]
             [clojure.tools.logging :as logger]
+            [clojure.edn :as edn]
             [imesc.config :as config]
             [imesc.alarm :as alarm]
             [imesc.alarm.mongodb]
@@ -10,7 +11,7 @@
   (:import imesc.alarm.AlarmRepository)
   (:gen-class))
 
-(def running (atom true))
+(def should-exit? (atom false))
 
 (s/def :notification/process-id         string?)
 (s/def :notification/action-name        #{:start :stop})
@@ -18,9 +19,11 @@
 (s/def :notification/delay-in-seconds   nat-int?)
 (s/def :notification/id                 string?)
 (s/def :notification/due-by             (partial instance? java.time.ZonedDateTime))
+(s/def ::request map?)
 
 (defn ->alarm-specification [request]
-  {:dummy (str (java.util.UUID/randomUUID))})
+  {:id (:process-id request)
+   :dummy (str (java.time.ZonedDateTime/now))})
 
 (defmacro ignoring-exceptions [& body]
   `(try ~@body (catch Exception e# (logger/error "skipping exception:" e#))))
@@ -32,65 +35,95 @@
 
 (defn valid? [request]
   (and (map? request)
-       (#{"start" "stop"} (:action request))))
+       (#{:start :stop} (:action request))
+       (:process-id request)))
 
-(defn start-new-process? [request process-already-exists?]
-  (and (= "start" (:action request))
-       (not process-already-exists?)))
+(defn analyze [request process-already-exists?]
+  (cond
+    (and (= :start (:action request))
+         (not process-already-exists?))
+    :create-new-process
 
-(defn cancel-process? [request]
-  (= "stop" (:action request)))
+    (= :stop (:action request))
+    :cancel-process
+
+    :else
+    :ignore-request))
+
+(s/fdef analyze
+  :args (s/cat :request ::request :process-exists? boolean?)
+  :ret #{:create-new-process :cancel-process :ignore-request})
 
 (defn process-request [^AlarmRepository r request]
-  (if-not (valid? request)
-    (logger/warn "ignoring invalid request:" request)
-    (let [pid (:notification/process-id request)]
-      (cond
-        (start-new-process? request (alarm/exists? r pid))
-        (alarm/insert r (->alarm-specification request))
+  (let [pid (:process-id request)
+        process-already-exists? (boolean (alarm/exists? r pid))]
+    (case (analyze request process-already-exists?)
+      :create-new-process
+      (alarm/insert r (->alarm-specification request))
 
-        (cancel-process? request)
-        (alarm/delete r pid)))))
+      :cancel-process
+      (alarm/delete r pid)
 
-(defn main-input-loop [request-supplying-fn request-processing-fn]
-  (logger/info "Entering main input loop...")
-  (loop []
-    (ignoring-exceptions-but-sleep
-     1000
-     (doseq [request (request-supplying-fn)]
-       (logger/debug "processing" request)
-       (ignoring-exceptions
-        (request-processing-fn request))))
-    (when @running (recur)))
-  (logger/info "Main input loop finished."))
+      :ignore-request
+      (logger/debug "ignoring request for process" pid "because it does not change state")
 
-(defn initialize! []
-  (-> config/config
-      integrant/prep
-      integrant/init))
+      :else
+      (logger/error "BUG: unknown scenario"))))
 
-(def default-request-supplying-fn
+(defn make-main-input-loop
+  "Construct the main input loop based on polling.
+
+  The function request-supplying-fn is called without arguments and is expected
+  to return a sequence of requests which need to be processed.
+
+  The function request-processing-fn is called with single argument begin
+  request and its return value is ignored.
+
+  The function exit-condition-fn is called without arguments and is expected to
+  return true or false. When true, the loop will finish."
+  [exit-condition-fn request-supplying-fn request-processing-fn]
+  (fn []
+    (logger/info "Entering main input loop...")
+    (loop []
+      (ignoring-exceptions-but-sleep
+       1000
+       (doseq [request (request-supplying-fn)]
+         (logger/debug "processing" request)
+         (ignoring-exceptions
+          (if-not (valid? request)
+            (logger/warn "ignoring invalid request:" request)
+            (request-processing-fn request)))))
+      (when-not (exit-condition-fn) (recur)))
+    (logger/info "Main input loop finished.")))
+
+(s/fdef make-main-input-loop
+  :args (s/cat :exit-condition-fn (s/fspec :args (s/cat) :ret boolean?)
+               :request-supplying-fn (s/fspec :args (s/cat) :ret (s/coll-of ::request))
+               :request-processing-fn (s/fspec :args (s/cat :request ::request) :ret any?))
+  :ret any?)
+
+(defn initialize!
+  ([]
+   (initialize! config/config))
+  ([configuration]
+   (-> configuration
+       integrant/prep
+       integrant/init)))
+
+(def kafka-request-supplying-fn
   #(->> (kafka/poll-request (:kafka/request-consumer @config/system))
-        (map :value)))
+        (map :value)
+        (map edn/read-string)))
+
+(defn make-kafka-based-main-input-loop [exit-condition-fn]
+  (make-main-input-loop exit-condition-fn
+                        kafka-request-supplying-fn
+                        (partial process-request (:alarm/repository @config/system))))
 
 (defn -main
   "Starts the system."
   [& args]
-  (.addShutdownHook (Runtime/getRuntime) (Thread. #(reset! running false)))
+  (.addShutdownHook (Runtime/getRuntime) (Thread. #(reset! should-exit? false)))
   (reset! config/system (initialize!))
-  (future
-    (main-input-loop default-request-supplying-fn
-                     (partial process-request (:alarm/repository @config/system)))))
+  (future (make-kafka-based-main-input-loop (fn [] @should-exit?))))
 
-(comment
-  (do
-    (try (integrant/halt! @config/system)
-         (catch Throwable _))
-    (reset! config/system (initialize!))
-    )
-
-  (reset! running false)
-  (reset! running true)
-  (kafka/poll-request (:kafka/request-consumer @config/system))
-
-  )
