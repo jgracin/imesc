@@ -24,7 +24,19 @@ FIXME: listing of options this app accepts.
 
 ...
 
-### Design Decisions
+## Development
+
+Run tests with one of the following:
+
+```
+lein test
+lein test :integration
+lein test :all
+```
+
+The first form should run only unit tests.
+
+## Design Decisions
 
 We try to avoid having multiple instances of the service because we would have
 to do coordination of schedulers.

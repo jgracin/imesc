@@ -20,13 +20,16 @@
                  [environ "1.1.0"]
                  [org.clojure/tools.logging "0.4.1"]
                  [ch.qos.logback/logback-classic "1.2.3"]]
+  :aliases {"test" ["run" "-m" "circleci.test/dir" :project/test-paths]
+            "tests" ["run" "-m" "circleci.test"]
+            "retest" ["run" "-m" "circleci.test.retest"]}
   :main ^:skip-aot imesc.core
   :plugins [[lein-environ "1.1.0"]]
   :target-path "target/%s"
   :profiles {:uberjar {:aot :all}
              :dev {:dependencies [[org.clojure/test.check "0.9.0"]
-                                  [ring "1.7.1"]]
+                                  [circleci/circleci.test "0.4.1"]]
                    :env {:case-repository-type "in-memory"}}
              :test {:env {:case-repository-type "in-memory"}
                     :dependencies [[org.clojure/test.check "0.9.0"]
-                                   [ring "1.7.1"]]}})
+                                   [circleci/circleci.test "0.4.1"]]}})
