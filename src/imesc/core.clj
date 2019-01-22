@@ -8,27 +8,45 @@
             [imesc.input.kafka :as kafka]
             [integrant.core :as integrant]
             [environ.core :refer [env]])
-  (:import imesc.alarm.AlarmRepository)
+  (:import imesc.alarm.AlarmRepository
+           java.time.ZonedDateTime)
   (:gen-class))
 
 (def should-exit? (atom false))
 
-(s/def :notification/process-id         string?)
-(s/def :notification/action-name        #{:start :stop})
+(s/def :imesc/process-id                string?)
+(s/def :imesc/action                    #{:start :stop})
 (s/def :notification/channel            #{:console :email :phone})
 (s/def :notification/delay-in-seconds   nat-int?)
 (s/def :notification/id                 string?)
-(s/def :notification/due-by             (partial instance? java.time.ZonedDateTime))
-(s/def ::request map?)
+(s/def :notification/due-by             (s/with-gen (partial instance? ZonedDateTime)
+                                          #(s/gen (fn [] (ZonedDateTime/now)))))
+(s/def :notification/at                 :notification/due-by)
+(s/def :notification/notification       (s/keys :opt-un [:notification/id
+                                                         :notification/delay-in-seconds
+                                                         :notification/channel
+                                                         :notification/due-by]))
+(s/def :notification/notifications      (s/coll-of :notification/notification))
+(s/def :imesc/request                   (s/keys :req-un [:imesc/process-id
+                                                         :imesc/action
+                                                         :notification/notifications]))
 
-(defn ->alarm-specification [request]
-  {:id (:process-id request)
-   :dummy (str (java.time.ZonedDateTime/now))})
+(defn- earliest-of [notifications]
+  (reduce (fn [t1 t2]
+            (if (.isBefore (:at t1) (:at t2)) t1 t2))
+          notifications))
+
+(defn ->alarm-specification [request now]
+  (let [notifications (->> (:notifications request)
+                           (map #(assoc % :at (.plusSeconds now (:delay-in-seconds %)))))]
+    {:id (:process-id request)
+     :at (:at (earliest-of notifications))
+     :notifications notifications}))
 
 (defmacro ignoring-exceptions [& body]
   `(try ~@body (catch Exception e# (logger/error "skipping exception:" e#))))
 
-(defmacro ignoring-exceptions-but-sleep [delay-millis & body]
+(defmacro ignoring-exceptions-but-with-sleep [delay-millis & body]
   `(try ~@body (catch Exception e#
                  (logger/error "skipping exception:" e#)
                  (Thread/sleep ~delay-millis))))
@@ -36,7 +54,8 @@
 (defn valid? [request]
   (and (map? request)
        (#{:start :stop} (:action request))
-       (:process-id request)))
+       (:process-id request)
+       (every? :delay-in-seconds (-> request :notifications))))
 
 (defn analyze [request process-already-exists?]
   (cond
@@ -51,15 +70,16 @@
     :ignore-request))
 
 (s/fdef analyze
-  :args (s/cat :request ::request :process-exists? boolean?)
+  :args (s/cat :request :imesc/request :process-exists? boolean?)
   :ret #{:create-new-process :cancel-process :ignore-request})
 
 (defn process-request [^AlarmRepository r request]
   (let [pid (:process-id request)
-        process-already-exists? (boolean (alarm/exists? r pid))]
+        process-already-exists? (boolean (alarm/exists? r pid))
+        now (java.time.ZonedDateTime/now)]
     (case (analyze request process-already-exists?)
       :create-new-process
-      (alarm/insert r (->alarm-specification request))
+      (alarm/insert r (->alarm-specification request now))
 
       :cancel-process
       (alarm/delete r pid)
@@ -85,7 +105,7 @@
   (fn []
     (logger/info "Entering main input loop...")
     (loop []
-      (ignoring-exceptions-but-sleep
+      (ignoring-exceptions-but-with-sleep
        1000
        (doseq [request (request-supplying-fn)]
          (logger/debug "processing" request)
@@ -96,11 +116,10 @@
       (when-not (exit-condition-fn) (recur)))
     (logger/info "Main input loop finished.")))
 
-(s/fdef make-main-input-loop
+#_(s/fdef make-main-input-loop
   :args (s/cat :exit-condition-fn (s/fspec :args (s/cat) :ret boolean?)
-               :request-supplying-fn (s/fspec :args (s/cat) :ret (s/coll-of ::request))
-               :request-processing-fn (s/fspec :args (s/cat :request ::request) :ret any?))
-  :ret any?)
+               :request-supplying-fn (s/fspec :args (s/cat) :ret (s/coll-of :imesc/request))
+               :request-processing-fn (s/fspec :args (s/cat :request :imesc/request) :ret any?)))
 
 (defn initialize!
   ([]
@@ -112,8 +131,7 @@
 
 (def kafka-request-supplying-fn
   #(->> (kafka/poll-request (:kafka/request-consumer @config/system))
-        (map :value)
-        (map edn/read-string)))
+        (map (comp edn/read-string :value))))
 
 (defn make-kafka-based-main-input-loop [exit-condition-fn]
   (make-main-input-loop exit-condition-fn

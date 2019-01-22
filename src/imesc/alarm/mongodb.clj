@@ -4,9 +4,12 @@
             [monger.collection :as mc]
             [integrant.core :as integrant]
             [environ.core :refer [env]]
-            [clojure.tools.logging :as logger])
+            [clojure.tools.logging :as logger]
+            [monger.conversion])
   (:import (com.mongodb MongoOptions ServerAddress WriteConcern)
-           (org.bson.types ObjectId)))
+           (org.bson.types ObjectId)
+           (java.time ZonedDateTime)
+           (java.util Date)))
 
 (defrecord MongoDbAlarmRepository [connection db])
 
@@ -32,6 +35,16 @@
 
 (defmethod integrant/halt-key! :alarm/repository [_ repository]
   (mg/disconnect (:connection repository)))
+
+(extend-protocol monger.conversion/ConvertToDBObject
+  java.time.ZonedDateTime
+  (to-db-object [^ZonedDateTime input]
+    (monger.conversion/to-db-object (Date/from (.toInstant input)))))
+
+(extend-protocol monger.conversion/ConvertFromDBObject
+  java.util.Date
+  (from-db-object [^java.util.Date input keywordize]
+    (ZonedDateTime/ofInstant (.toInstant input) (java.time.ZoneId/systemDefault))))
 
 (comment
   (mc/find-maps (:db (:alarm/repository @imesc.config/system)) alarm-coll)

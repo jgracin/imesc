@@ -173,13 +173,13 @@
   ;;
   ;; Core Escalation System - Kafka topic input requests
   ;;
-  [{:action "start"
+  [{:action :start
     :process-id "finpoint"
     :notifications [{:delay-in-seconds 10
-                     :channel "debug-console"
+                     :channel :console
                      :params {:message "First dummy notification to console."}}
                     {:delay-in-seconds 15
-                     :channel "debug-console"
+                     :channel :console
                      :params {:message "Second dummy notification to console."}}
                     {:delay-in-seconds 300
                      :channel "email"
@@ -190,7 +190,7 @@
                      :channel "phone"
                      :params {:number "38599000001"
                               :message "new-order-unconfirmed"}}]}
-   {:action "stop"
+   {:action :stop
     :process-id "finpoint"}]
 
   ;;
@@ -200,11 +200,11 @@
    :at "2018-11-28T12:10:00Z"
    :data [:notifications [{:id "ec42d337-97bf-4956-acf4-3e2b67934b9e"
                            :at "2018-11-28T12:10:00Z"
-                           :channel "debug-console"
+                           :channel :console
                            :params {:message "First dummy notification to console."}}
                           {:id "aafeef27-d5b4-441e-bb09-c7c2930c449f"
                            :at "2018-11-28T12:10:00Z"
-                           :channel "debug-console"
+                           :channel :console
                            :params {:message "Second dummy notification to console."}}
                           {:id "97e2e924-fb41-4365-9b78-67b4ff29cca3"
                            :at "2018-11-28T12:10:00Z"
