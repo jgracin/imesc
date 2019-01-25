@@ -1,7 +1,10 @@
 (ns imesc.core
   (:require [clojure.spec.alpha :as s]
+            [clojure.spec.gen.alpha :as gen]
             [clojure.tools.logging :as logger]
             [clojure.edn :as edn]
+            [clojure.string :as string]
+            [clojure.set :refer [subset?]]
             [imesc.config :as config]
             [imesc.alarm :as alarm]
             [imesc.alarm.mongodb]
@@ -9,39 +12,74 @@
             [integrant.core :as integrant]
             [environ.core :refer [env]])
   (:import imesc.alarm.AlarmRepository
-           java.time.ZonedDateTime)
+           (java.time ZonedDateTime ZoneId Instant))
   (:gen-class))
 
 (def should-exit? (atom false))
 
-(s/def :imesc/process-id                string?)
+(s/def ::zoned-date-time
+  (let [l #(.getEpochSecond (Instant/parse %))]
+    (s/with-gen (partial instance? ZonedDateTime)
+      (fn [] (gen/fmap #(.atZone (Instant/ofEpochSecond %)
+                                (ZoneId/systemDefault))
+                      (s/gen (s/int-in (- (l "1980-01-01T00:00:00.00Z"))
+                                       (l "2070-01-01T00:00:00.00Z"))))))))
+(s/def ::non-empty-string
+  (s/with-gen
+    (s/and string? (complement string/blank?))
+    #(gen/not-empty (gen/string-alphanumeric))))
+
+(s/def :imesc/process-id                ::non-empty-string)
 (s/def :imesc/action                    #{:start :stop})
 (s/def :notification/channel            #{:console :email :phone})
-(s/def :notification/delay-in-seconds   nat-int?)
-(s/def :notification/id                 string?)
-(s/def :notification/due-by             (s/with-gen (partial instance? ZonedDateTime)
-                                          #(s/gen (fn [] (ZonedDateTime/now)))))
-(s/def :notification/at                 :notification/due-by)
-(s/def :notification/notification       (s/keys :opt-un [:notification/id
-                                                         :notification/delay-in-seconds
-                                                         :notification/channel
-                                                         :notification/due-by]))
+(s/def :notification/delay-in-seconds   (s/int-in 1 86400))
+(s/def :notification/id                 ::non-empty-string)
+(s/def :notification/at                 ::zoned-date-time)
+(s/def :notification/params             any?)
+(s/def :notification/notification       (s/keys :req-un [:notification/delay-in-seconds
+                                                         :notification/channel]
+                                                :opt-un [:notification/params]))
 (s/def :notification/notifications      (s/coll-of :notification/notification))
 (s/def :imesc/request                   (s/keys :req-un [:imesc/process-id
-                                                         :imesc/action
-                                                         :notification/notifications]))
+                                                         :imesc/action]
+                                                :opt-un [:notification/notifications]))
+(s/def :alarm/id                        ::non-empty-string)
+(s/def :alarm/notification              (s/keys :req-un [:notification/id
+                                                         :notification/delay-in-seconds
+                                                         :notification/channel
+                                                         :notification/at]
+                                               :opt-un [:notification/params]))
+(s/def :alarm/notifications             (s/coll-of :alarm/notification))
+(s/def :imesc/alarm-entry               (s/keys :req-un [:alarm/id
+                                                         :notification/at
+                                                         :alarm/notifications]))
 
-(defn- earliest-of [notifications]
-  (reduce (fn [t1 t2]
-            (if (.isBefore (:at t1) (:at t2)) t1 t2))
-          notifications))
+(defn- same-but-enriched? [coll1 coll2]
+  (let [subset-keys? (fn [m1 m2]
+                       (subset? (set (keys m1)) (set (keys m2))))]
+    (and (= (count coll1) (count coll2))
+         (every? true? (map subset-keys? coll1 coll2)))))
 
-(defn ->alarm-specification [request now]
-  (let [notifications (->> (:notifications request)
-                           (map #(assoc % :at (.plusSeconds now (:delay-in-seconds %)))))]
-    {:id (:process-id request)
-     :at (:at (earliest-of notifications))
-     :notifications notifications}))
+(defn alarm-entry [process-id notifications now]
+  (let [notifs (map #(assoc %
+                            :at (.plusSeconds now (:delay-in-seconds %))
+                            :id (str (java.util.UUID/randomUUID)))
+                    notifications)
+        earliest-of (fn [notifications]
+                      (reduce (fn [t1 t2]
+                                (if (.isBefore (:at t1) (:at t2)) t1 t2))
+                              notifications))]
+    {:id process-id
+     :at (:at (earliest-of notifs))
+     :notifications notifs}))
+
+(s/fdef alarm-entry
+  :args (s/cat :process-id :imesc/process-id
+               :notifications (s/coll-of :notification/notification :min-count 1)
+               :now ::zoned-date-time)
+  :ret :imesc/alarm-entry
+  :fn (fn [m] (same-but-enriched? (-> m :args :notifications)
+                                 (-> m :ret :notifications))))
 
 (defmacro ignoring-exceptions [& body]
   `(try ~@body (catch Exception e# (logger/error "skipping exception:" e#))))
@@ -52,12 +90,9 @@
                  (Thread/sleep ~delay-millis))))
 
 (defn valid? [request]
-  (and (map? request)
-       (#{:start :stop} (:action request))
-       (:process-id request)
-       (every? :delay-in-seconds (-> request :notifications))))
+  (s/valid? :imesc/request request))
 
-(defn analyze [request process-already-exists?]
+(defn decide-next-action [request process-already-exists?]
   (cond
     (and (= :start (:action request))
          (not process-already-exists?))
@@ -69,7 +104,7 @@
     :else
     :ignore-request))
 
-(s/fdef analyze
+(s/fdef decide-next-action
   :args (s/cat :request :imesc/request :process-exists? boolean?)
   :ret #{:create-new-process :cancel-process :ignore-request})
 
@@ -77,9 +112,9 @@
   (let [pid (:process-id request)
         process-already-exists? (boolean (alarm/exists? r pid))
         now (java.time.ZonedDateTime/now)]
-    (case (analyze request process-already-exists?)
+    (case (decide-next-action request process-already-exists?)
       :create-new-process
-      (alarm/insert r (->alarm-specification request now))
+      (alarm/insert r (alarm-entry (:process-id request) (:notifications request) now))
 
       :cancel-process
       (alarm/delete r pid)
@@ -108,10 +143,10 @@
       (ignoring-exceptions-but-with-sleep
        1000
        (doseq [request (request-supplying-fn)]
-         (logger/debug "processing" request)
+         (logger/debug "processing" (pr-str request))
          (ignoring-exceptions
           (if-not (valid? request)
-            (logger/warn "ignoring invalid request:" request)
+            (logger/warn "ignoring invalid request with process-id" (:process-id request))
             (request-processing-fn request)))))
       (when-not (exit-condition-fn) (recur)))
     (logger/info "Main input loop finished.")))
@@ -143,5 +178,6 @@
   [& args]
   (.addShutdownHook (Runtime/getRuntime) (Thread. #(reset! should-exit? false)))
   (reset! config/system (initialize!))
-  (future (make-kafka-based-main-input-loop (fn [] @should-exit?))))
+  (let [main-loop (make-kafka-based-main-input-loop (fn [] @should-exit?))]
+    (future (main-loop))))
 
