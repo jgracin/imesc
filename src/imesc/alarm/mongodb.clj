@@ -24,7 +24,9 @@
     (logger/debug "inserting alarm-specification" alarm-specification)
     (mc/insert (:db repository) alarm-coll (merge alarm-specification {:_id (ObjectId.)}))
     (logger/debug "after insert"))
-  (delete [repository id])
+  (delete [repository id]
+    (logger/debug "deleting an alarm" id)
+    (mc/remove (:db repository) alarm-coll {:id id}))
   (exists? [repository id]
     (mc/find-one (:db repository) alarm-coll {:id id})))
 
