@@ -22,8 +22,4 @@
   :target-path "target/%s"
   :profiles {:uberjar {:aot :all}
              :dev {:dependencies [[org.clojure/test.check "0.9.0"]
-                                  [circleci/circleci.test "0.4.1"]]
-                   :env {:case-repository-type "in-memory"}}
-             :test {:env {:case-repository-type "in-memory"}
-                    :dependencies [[org.clojure/test.check "0.9.0"]
-                                   [circleci/circleci.test "0.4.1"]]}})
+                                  [circleci/circleci.test "0.4.1"]]}})
