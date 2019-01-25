@@ -34,7 +34,6 @@
 (s/def :notification/channel            #{:console :email :phone})
 (s/def :notification/delay-in-seconds   (s/int-in 1 86400))
 (s/def :notification/id                 ::non-empty-string)
-(s/def :notification/at                 ::zoned-date-time)
 (s/def :notification/params             any?)
 (s/def :notification/notification       (s/keys :req-un [:notification/delay-in-seconds
                                                          :notification/channel]
@@ -44,14 +43,15 @@
                                                          :imesc/action]
                                                 :opt-un [:notification/notifications]))
 (s/def :alarm/id                        ::non-empty-string)
+(s/def :alarm/at                        ::zoned-date-time)
 (s/def :alarm/notification              (s/keys :req-un [:notification/id
                                                          :notification/delay-in-seconds
                                                          :notification/channel
-                                                         :notification/at]
+                                                         :alarm/at]
                                                :opt-un [:notification/params]))
 (s/def :alarm/notifications             (s/coll-of :alarm/notification))
 (s/def :imesc/alarm-entry               (s/keys :req-un [:alarm/id
-                                                         :notification/at
+                                                         :alarm/at
                                                          :alarm/notifications]))
 
 (defn- same-but-enriched? [coll1 coll2]
