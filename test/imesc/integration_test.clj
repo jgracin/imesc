@@ -1,8 +1,8 @@
 (ns imesc.integration-test
   (:require [clojure.test :refer :all]
             [imesc.core :as core]
+            [imesc.input :as input]
             [imesc.config :as config]
-            [imesc.input.kafka :as kafka]
             [imesc.alarm :as alarm]
             [imesc.alarm.mongodb]
             [environ.core :refer [env]]
@@ -70,7 +70,7 @@
 (deftest ^:integration basic-system-test
   (testing "successfully creating a new escalation process"
     (let [should-exit? (atom false)
-          main-loop (core/make-kafka-based-main-input-loop (fn [] @should-exit?))
+          main-loop (input/make-kafka-based-main-input-loop (fn [] @should-exit?))
           process-id (str (java.util.UUID/randomUUID))]
       (client/send! (create-producer) input-topic process-id (dummy-start-request process-id))
       (let [t (future (main-loop))]
