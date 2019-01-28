@@ -4,7 +4,7 @@
 
 (defonce system (atom {}))
 
-(def request-topic (or (env "REQUEST_TOPIC") "imesc.request"))
+(def request-topic (or (env "REQUEST_TOPIC") "imesc.requests"))
 
 (def config
   {:kafka/request-consumer

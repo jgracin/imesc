@@ -22,11 +22,11 @@
 
 (comment
   (def ac (AdminClient/create {"bootstrap.servers" "localhost:9092"}))
-  (-> ac (.createTopics #{(NewTopic. "imesc.request" 1 1)}))
-  (-> ac (.deleteTopics #{"imesc.request"}))
+  (-> ac (.createTopics #{(NewTopic. "imesc.requests" 1 1)}))
+  (-> ac (.deleteTopics #{"imesc.requests"}))
   (-> ac .listTopics .names deref)
   (-> ac .listConsumerGroups .all deref)
-  (-> ac (.describeTopics #{"imesc.request"}) .all deref)
+  (-> ac (.describeTopics #{"imesc.requests"}) .all deref)
   (-> ac .describeCluster .controller deref)
   (-> ac .describeCluster .nodes deref)
   (-> ac .close)
@@ -59,5 +59,5 @@
                                        :channel :phone
                                        :params {:phone-number "38599000001"
                                                 :message "new-order-unconfirmed"}}]})
-  (client/send! producer "imesc.request" "r2" dummy-request)
+  (client/send! producer "imesc.requests" "r2" dummy-request)
   )

@@ -43,7 +43,7 @@
                     :params {:phone-number "38599000001"
                              :message "new-order-unconfirmed"}}]})
 
-(def input-topic "imesc.request")
+(def input-topic "imesc.requests")
 
 (defn polling-wait
   ([success-condition-fn]

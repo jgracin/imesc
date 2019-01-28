@@ -30,10 +30,10 @@
   ;;
   ["PUT /restaurant/finpoint/configuration"
    {:descriptors [{:delay 10
-                     :channel :debug-console
+                     :channel :console
                      :params {:message "First dummy notification to console."}}
                     {:delay 15
-                     :channel :debug-console
+                     :channel :console
                      :params {:message "Second dummy notification to console."}}
                     {:delay 300
                      :channel :email
