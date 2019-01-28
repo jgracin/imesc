@@ -44,7 +44,7 @@
 
   (def dummy-request {:action :start
                       :process-id "finpoint"
-                      :notifications [{:delay-in-seconds 10
+                      :descriptors [{:delay-in-seconds 10
                                        :channel :debug-console
                                        :params {:message "First dummy notification to console."}}
                                       {:delay-in-seconds 15
@@ -57,7 +57,7 @@
                                                 :body "Visit https://roomorders.com."}}
                                       {:delay-in-seconds 600
                                        :channel :phone
-                                       :params {:number "38599000001"
+                                       :params {:phone-number "38599000001"
                                                 :message "new-order-unconfirmed"}}]})
   (client/send! producer "imesc.request" "r2" dummy-request)
   )

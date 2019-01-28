@@ -3,12 +3,12 @@
             [clojure.test :refer :all]
             [clojure.spec.test.alpha :as stest]))
 
-(def num-tests 20)
+(def num-tests 100)
 
-(deftest transformation
-  (testing "must be able to transform request into alarm entry"
-    (let [results (stest/check [`imesc.core/alarm-entry
-                                `imesc.core/valid?
-                                `imesc.core/decide-next-action]
+(deftest test-properties
+  (testing "test function properties"
+    (let [results (stest/check [`sut/alarm-entry
+                                `sut/valid?
+                                `sut/decide-next-action]
                                {:clojure.spec.test.check/opts {:num-tests num-tests}})]
       (is (not-any? #(contains? % :failure) results)))))

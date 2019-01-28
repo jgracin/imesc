@@ -5,6 +5,7 @@
             [clojure.edn :as edn]
             [clojure.string :as string]
             [clojure.set :refer [subset?]]
+            [imesc.util :refer [ignoring-exceptions ignoring-exceptions-but-with-sleep]]
             [imesc.config :as config]
             [imesc.alarm :as alarm]
             [imesc.alarm.mongodb]
@@ -17,82 +18,74 @@
 
 (def should-exit? (atom false))
 
-(s/def ::zoned-date-time
-  (let [l #(.getEpochSecond (Instant/parse %))]
-    (s/with-gen (partial instance? ZonedDateTime)
-      (fn [] (gen/fmap #(.atZone (Instant/ofEpochSecond %)
-                                (ZoneId/systemDefault))
-                      (s/gen (s/int-in (- (l "1980-01-01T00:00:00.00Z"))
-                                       (l "2070-01-01T00:00:00.00Z"))))))))
-(s/def ::non-empty-string
+(s/def :email/address
   (s/with-gen
-    (s/and string? (complement string/blank?))
-    #(gen/not-empty (gen/string-alphanumeric))))
-
-(s/def :imesc/process-id                ::non-empty-string)
-(s/def :imesc/action                    #{:start :stop})
+    (s/and :common/non-empty-string #(re-matches #"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,63}$" %))
+    (fn [] (gen/fmap (fn [[username subdomain]]
+                      (str username "@" subdomain ".com"))
+                    (s/gen (s/tuple :common/non-empty-string
+                                    :common/non-empty-string))))))
+(s/def :email/to                        (s/coll-of :email/address))
+(s/def :email/subject                   :common/non-empty-string)
+(s/def :email/body                      :common/non-empty-string)
+(s/def :notification/message            :common/non-empty-string)
 (s/def :notification/channel            #{:console :email :phone})
-(s/def :notification/delay-in-seconds   (s/int-in 1 86400))
-(s/def :notification/id                 ::non-empty-string)
-(s/def :notification/params             any?)
-(s/def :notification/notification       (s/keys :req-un [:notification/delay-in-seconds
+(s/def :notification/delay-in-seconds   (s/int-in 1 (* 3600 24)))
+(s/def :notification/id                 :common/non-empty-string)
+(s/def :notifier/params                 (s/or :console-params (s/keys :req-un [:notification/message])
+                                              :email-params (s/keys :req-un [:email/to
+                                                                             :email/subject
+                                                                             :email/body])
+                                              :phone-params (s/keys :req-un [:common/phone-number
+                                                                             :notification/message])))
+(s/def :notification/descriptor         (s/keys :req-un [:notification/delay-in-seconds
                                                          :notification/channel]
-                                                :opt-un [:notification/params]))
-(s/def :notification/notifications      (s/coll-of :notification/notification))
+                                                :opt-un [:notifier/params]))
+(s/def :notification/descriptors        (s/coll-of :notification/descriptor))
+(s/def :imesc/process-id                :common/non-empty-string)
+(s/def :imesc/action                    #{:start :stop})
 (s/def :imesc/request                   (s/keys :req-un [:imesc/process-id
                                                          :imesc/action]
-                                                :opt-un [:notification/notifications]))
-(s/def :alarm/id                        ::non-empty-string)
-(s/def :alarm/at                        ::zoned-date-time)
-(s/def :alarm/notification              (s/keys :req-un [:notification/id
+                                                :opt-un [:notification/descriptors]))
+(s/def :alarm/id                        :common/non-empty-string)
+(s/def :alarm/at                        :common/zoned-date-time)
+(s/def :alarm/descriptor                (s/keys :req-un [:notification/id
+                                                         :alarm/at
                                                          :notification/delay-in-seconds
-                                                         :notification/channel
-                                                         :alarm/at]
-                                               :opt-un [:notification/params]))
-(s/def :alarm/notifications             (s/coll-of :alarm/notification))
+                                                         :notification/channel]
+                                               :opt-un [:notifier/params]))
+(s/def :alarm/descriptors               (s/coll-of :alarm/descriptor))
 (s/def :imesc/alarm-entry               (s/keys :req-un [:alarm/id
                                                          :alarm/at
-                                                         :alarm/notifications]))
+                                                         :alarm/descriptors]))
 
-(defn- same-but-enriched? [coll1 coll2]
-  (let [subset-keys? (fn [m1 m2]
-                       (subset? (set (keys m1)) (set (keys m2))))]
-    (and (= (count coll1) (count coll2))
-         (every? true? (map subset-keys? coll1 coll2)))))
+(defn assign-absolute-time [now descriptor]
+  (assoc descriptor :at (.plusSeconds now (:delay-in-seconds descriptor))))
 
-(defn alarm-entry [process-id notifications now]
-  (let [notifs (map #(assoc %
-                            :at (.plusSeconds now (:delay-in-seconds %))
-                            :id (str (java.util.UUID/randomUUID)))
-                    notifications)
-        earliest-of (fn [notifications]
-                      (reduce (fn [t1 t2]
-                                (if (.isBefore (:at t1) (:at t2)) t1 t2))
-                              notifications))]
-    {:id process-id
-     :at (:at (earliest-of notifs))
-     :notifications notifs}))
+(defn assign-id [m]
+  (assoc m :id (str (java.util.UUID/randomUUID))))
+
+(defn alarm-entry [id descriptors now]
+  (let [alarm-descriptors (->> descriptors
+                               (map (partial assign-absolute-time now))
+                               (map assign-id)
+                               (sort-by :at))]
+    {:id id
+     :at (-> alarm-descriptors  first :at)
+     :descriptors alarm-descriptors}))
 
 (s/fdef alarm-entry
-  :args (s/cat :process-id :imesc/process-id
-               :notifications (s/coll-of :notification/notification :min-count 1)
-               :now ::zoned-date-time)
+  :args (s/cat :id :alarm/id
+               :descriptors (s/coll-of :notification/descriptor :min-count 1)
+               :now :common/zoned-date-time)
   :ret :imesc/alarm-entry
-  :fn (fn [m] (same-but-enriched? (-> m :args :notifications)
-                                 (-> m :ret :notifications))))
-
-(defmacro ignoring-exceptions [& body]
-  `(try ~@body (catch Exception e# (logger/error "skipping exception:" e#))))
-
-(defmacro ignoring-exceptions-but-with-sleep [delay-millis & body]
-  `(try ~@body (catch Exception e#
-                 (logger/error "skipping exception:" e#)
-                 (Thread/sleep ~delay-millis))))
+  :fn (fn [m] (= (count (-> m :args :descriptors))
+                (count (-> m :ret :descriptors)))))
 
 (defn valid? [request]
   (s/valid? :imesc/request request))
 
-(defn decide-next-action [request process-already-exists?]
+(defn next-action [request process-already-exists?]
   (cond
     (and (= :start (:action request))
          (not process-already-exists?))
@@ -104,7 +97,7 @@
     :else
     :ignore-request))
 
-(s/fdef decide-next-action
+(s/fdef next-action
   :args (s/cat :request :imesc/request :process-exists? boolean?)
   :ret #{:create-new-process :cancel-process :ignore-request})
 
@@ -112,9 +105,9 @@
   (let [pid (:process-id request)
         process-already-exists? (boolean (alarm/exists? r pid))
         now (java.time.ZonedDateTime/now)]
-    (case (decide-next-action request process-already-exists?)
+    (case (next-action request process-already-exists?)
       :create-new-process
-      (alarm/insert r (alarm-entry (:process-id request) (:notifications request) now))
+      (alarm/insert r (alarm-entry (:process-id request) (:descriptors request) now))
 
       :cancel-process
       (alarm/delete r pid)
@@ -128,7 +121,7 @@
 (defn make-main-input-loop
   "Construct the main input loop based on polling.
 
-  The function request-supplying-fn is called without arguments and is expected
+  The function request-polling-fn is called without arguments and is expected
   to return a sequence of requests which need to be processed.
 
   The function request-processing-fn is called with single argument begin
@@ -136,13 +129,13 @@
 
   The function exit-condition-fn is called without arguments and is expected to
   return true or false. When true, the loop will finish."
-  [exit-condition-fn request-supplying-fn request-processing-fn]
+  [exit-condition-fn request-polling-fn request-processing-fn]
   (fn []
     (logger/info "Entering main input loop...")
     (loop []
       (ignoring-exceptions-but-with-sleep
        1000
-       (doseq [request (request-supplying-fn)]
+       (doseq [request (request-polling-fn)]
          (logger/debug "processing" (pr-str request))
          (ignoring-exceptions
           (if-not (valid? request)
@@ -151,10 +144,14 @@
       (when-not (exit-condition-fn) (recur)))
     (logger/info "Main input loop finished.")))
 
-#_(s/fdef make-main-input-loop
-  :args (s/cat :exit-condition-fn (s/fspec :args (s/cat) :ret boolean?)
-               :request-supplying-fn (s/fspec :args (s/cat) :ret (s/coll-of :imesc/request))
-               :request-processing-fn (s/fspec :args (s/cat :request :imesc/request) :ret any?)))
+(def kafka-request-polling-fn
+  #(->> (kafka/poll-request (:kafka/request-consumer @config/system))
+        (map (comp edn/read-string :value))))
+
+(defn make-kafka-based-main-input-loop [exit-condition-fn]
+  (make-main-input-loop exit-condition-fn
+                        kafka-request-polling-fn
+                        (partial process-request (:alarm/repository @config/system))))
 
 (defn initialize!
   ([]
@@ -163,15 +160,6 @@
    (-> configuration
        integrant/prep
        integrant/init)))
-
-(def kafka-request-supplying-fn
-  #(->> (kafka/poll-request (:kafka/request-consumer @config/system))
-        (map (comp edn/read-string :value))))
-
-(defn make-kafka-based-main-input-loop [exit-condition-fn]
-  (make-main-input-loop exit-condition-fn
-                        kafka-request-supplying-fn
-                        (partial process-request (:alarm/repository @config/system))))
 
 (defn -main
   "Starts the system."
