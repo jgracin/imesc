@@ -9,7 +9,6 @@
             [imesc.config :as config]
             [imesc.alarm :as alarm]
             [imesc.alarm.mongodb]
-            [imesc.input.kafka :as kafka]
             [environ.core :refer [env]])
   (:import imesc.alarm.AlarmRepository
            (java.time ZonedDateTime ZoneId Instant)))
@@ -139,12 +138,3 @@
             (request-processing-fn request)))))
       (when-not (exit-condition-fn) (recur)))
     (logger/info "Main input loop finished.")))
-
-(def kafka-request-polling-fn
-  #(->> (kafka/poll-request (:kafka/request-consumer @config/system))
-        (map (comp edn/read-string :value))))
-
-(defn make-kafka-based-main-input-loop [exit-condition-fn]
-  (make-main-input-loop exit-condition-fn
-                        kafka-request-polling-fn
-                        (partial process-request (:alarm/repository @config/system))))

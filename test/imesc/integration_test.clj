@@ -70,7 +70,7 @@
 (deftest ^:integration basic-system-test
   (testing "successfully creating a new escalation process"
     (let [should-exit? (atom false)
-          main-loop (input/make-kafka-based-main-input-loop (fn [] @should-exit?))
+          main-loop (core/make-kafka-based-main-input-loop (fn [] @should-exit?))
           process-id (str (java.util.UUID/randomUUID))]
       (client/send! (create-producer) input-topic process-id (dummy-start-request process-id))
       (let [t (future (main-loop))]
