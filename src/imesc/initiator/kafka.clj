@@ -1,6 +1,8 @@
-(ns imesc.input.kafka
+(ns imesc.initiator.kafka
   (:require [kinsky.client :as client]
-            [integrant.core :as integrant])
+            [clojure.edn :as edn]
+            [integrant.core :as integrant]
+            [imesc.config :as config])
   (:import [org.apache.kafka.clients.admin AdminClient KafkaAdminClient NewTopic]
            [java.time Duration]))
 
@@ -9,6 +11,10 @@
       :by-topic
       vals
       first))
+
+(def kafka-request-polling-fn
+  #(->> (poll-request (:kafka/request-consumer @config/system))
+        (map (comp edn/read-string :value))))
 
 (defmethod integrant/init-key :kafka/request-consumer [_ {:keys [topic consumer-opts]}]
   (let [consumer (client/consumer consumer-opts

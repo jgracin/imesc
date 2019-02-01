@@ -1,14 +1,19 @@
 (ns imesc.core
   (:require [clojure.tools.logging :as logger]
-            [clojure.edn :as edn]
             [imesc.config :as config]
-            [imesc.input :as input]
-            [imesc.input.kafka :as kafka]
+            [imesc.initiator :as initiator]
+            [imesc.initiator.kafka :as initiator.kafka]
+            [imesc.activator :as activator]
+            [imesc.activator.kafka :as activator.kafka]
             [integrant.core :as integrant]
             [environ.core :refer [env]])
   (:gen-class))
 
 (def should-exit? (atom false))
+
+;; We must synchronize alarm repository access between the Initiator and the
+;; Activator to avoid race conditions when canceling and updating alarms.
+(defonce repository-lock (Object.))
 
 (defn initialize!
   ([]
@@ -18,14 +23,14 @@
        integrant/prep
        integrant/init)))
 
-(def kafka-request-polling-fn
-  #(->> (kafka/poll-request (:kafka/request-consumer @config/system))
-        (map (comp edn/read-string :value))))
-
 (defn make-kafka-based-main-input-loop [exit-condition-fn]
-  (input/make-main-input-loop exit-condition-fn
-                              kafka-request-polling-fn
-                              (partial input/process-request (:alarm/repository @config/system))))
+  (initiator/make-main-input-loop
+   exit-condition-fn
+   initiator.kafka/kafka-request-polling-fn
+   (fn [request]
+     (locking repository-lock
+       (initiator/process-request (:alarm/repository @config/system)
+                                  request)))))
 
 (defn -main
   "Starts the system."

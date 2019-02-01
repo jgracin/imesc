@@ -1,7 +1,7 @@
 (ns imesc.integration-test
   (:require [clojure.test :refer :all]
             [imesc.core :as core]
-            [imesc.input :as input]
+            [imesc.initiator :as initiator]
             [imesc.config :as config]
             [imesc.alarm :as alarm]
             [imesc.alarm.mongodb]

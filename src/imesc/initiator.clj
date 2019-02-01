@@ -1,4 +1,5 @@
-(ns imesc.input
+(ns imesc.initiator
+  "Initiator handles incoming requests and initiates escalation processes."
   (:require [clojure.spec.alpha :as s]
             [clojure.spec.gen.alpha :as gen]
             [clojure.tools.logging :as logger]
@@ -48,7 +49,7 @@
                                                          :alarm/at
                                                          :notification/delay-in-seconds
                                                          :notification/channel]
-                                               :opt-un [:notifier/params]))
+                                                :opt-un [:notifier/params]))
 (s/def :alarm/descriptors               (s/coll-of :alarm/descriptor))
 (s/def :imesc/alarm-entry               (s/keys :req-un [:alarm/id
                                                          :alarm/at
