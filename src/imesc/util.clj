@@ -26,4 +26,4 @@
     (s/and string? (complement string/blank?))
     #(gen/not-empty (gen/string-alphanumeric))))
 
-(s/def :common/phone-number                    :common/non-empty-string)
+(s/def :common/phone-number :common/non-empty-string)
