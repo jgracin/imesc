@@ -87,37 +87,37 @@
   {:id "finpoint"
    :at "2018-11-28T12:10:00Z"
    :data [:descriptors [{:id "ec42d337-97bf-4956-acf4-3e2b67934b9e"
-                           :at "2018-11-28T12:10:00Z"
-                           :channel :console
-                           :params {:message "First dummy notification to console."}}
-                          {:id "aafeef27-d5b4-441e-bb09-c7c2930c449f"
-                           :at "2018-11-28T12:10:00Z"
-                           :channel :console
-                           :params {:message "Second dummy notification to console."}}
-                          {:id "97e2e924-fb41-4365-9b78-67b4ff29cca3"
-                           :at "2018-11-28T12:10:00Z"
-                           :channel :email
-                           :params {:to ["orders@example.com"]
-                                    :subject "You have unconfirmed new orders in RoomOrders."
-                                    :body "Visit https://roomorders.com."}}
-                          {:id "bfd2bfa2-e7b1-4896-b909-fcabb22c62dc"
-                           :at "2018-11-28T12:10:00Z"
-                           :channel :phone
-                           :params {:phone-number "38599000001"
-                                    :message "new-order-unconfirmed"}}]]}
+                         :at "2018-11-28T12:10:00Z"
+                         :channel :console
+                         :params {:message "First dummy notification to console."}}
+                        {:id "aafeef27-d5b4-441e-bb09-c7c2930c449f"
+                         :at "2018-11-28T12:10:00Z"
+                         :channel :console
+                         :params {:message "Second dummy notification to console."}}
+                        {:id "97e2e924-fb41-4365-9b78-67b4ff29cca3"
+                         :at "2018-11-28T12:10:00Z"
+                         :channel :email
+                         :params {:to ["orders@example.com"]
+                                  :subject "You have unconfirmed new orders in RoomOrders."
+                                  :body "Visit https://roomorders.com."}}
+                        {:id "bfd2bfa2-e7b1-4896-b909-fcabb22c62dc"
+                         :at "2018-11-28T12:10:00Z"
+                         :channel :phone
+                         :params {:phone-number "38599000001"
+                                  :message "new-order-unconfirmed"}}]]}
 
   ;;
   ;; Console Notifier
   ;;
-  {:request-id "ec42d337-97bf-4956-acf4-3e2b67934b9e"
-   :time "2018-11-28T12:00:12Z"
+  {:id "ec42d337-97bf-4956-acf4-3e2b67934b9e"
+   :at "2018-11-28T12:00:12Z"
    :message "First dummy notification to console."}
 
   ;;
   ;; Email Notifier Kafka topic imesc.email-requests
   ;;
-  {:request-id "1cc83662-cfcc-4e3f-a8a8-7a1ee06a6f34"
-   :time "2018-11-28T12:10:00Z"
+  {:id "1cc83662-cfcc-4e3f-a8a8-7a1ee06a6f34"
+   :at "2018-11-28T12:10:00Z"
    :to ["orders@example.com"]
    :subject "You have unconfirmed new orders in RoomOrders."
    :body "Visit https://roomorders.com."}
@@ -125,22 +125,22 @@
   ;;
   ;; Email Notifier Kafka topic imesc.email-results
   ;;
-  {:request-id "1cc83662-cfcc-4e3f-a8a8-7a1ee06a6f34"
-   :status "SUCCESS"}
+  {:id "1cc83662-cfcc-4e3f-a8a8-7a1ee06a6f34"
+   :status :success}
 
   ;;
   ;; Phone Call Notifier topic imesc.phone-call-requests
   ;;
-  {:request-id "a84dbb4e-2e32-4776-8cf0-110436d2f9e5"
-   :time"2018-11-28T12:10:00Z"
+  {:id "a84dbb4e-2e32-4776-8cf0-110436d2f9e5"
+   :at "2018-11-28T12:10:00Z"
    :phone-number "38599000001"
    :message "new-order-unconfirmed"}
 
   ;;
   ;; Phone Call Notifier topic imesc.phone-call-results
   ;;
-  {:request-id "a84dbb4e-2e32-4776-8cf0-110436d2f9e5"
-   :status "FAILED"                     ; SUCCESS or FAILED
+  {:id "a84dbb4e-2e32-4776-8cf0-110436d2f9e5"
+   :status :failed
    :reason "No answer."}
 
   )
