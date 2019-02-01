@@ -18,15 +18,15 @@
 
 (extend-type MongoDbAlarmRepository
   alarm/AlarmRepository
-  (overdue-alarms [repository now]
+  (-overdue-alarms [repository now]
     (mc/find-maps (:db repository) alarm-coll {:at {"$lt" now}}))
-  (insert [repository alarm-entry]
+  (-insert [repository alarm-entry]
     (logger/debug "inserting alarm-entry" alarm-entry)
     (mc/insert (:db repository) alarm-coll (merge alarm-entry {:_id (ObjectId.)})))
-  (delete [repository id]
+  (-delete [repository id]
     (logger/debug "deleting an alarm" id)
     (mc/remove (:db repository) alarm-coll {:id id}))
-  (exists? [repository id]
+  (-exists? [repository id]
     (mc/find-one (:db repository) alarm-coll {:id id})))
 
 (defmethod integrant/init-key :alarm/repository [_ opts]
