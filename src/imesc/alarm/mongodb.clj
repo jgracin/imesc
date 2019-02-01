@@ -19,7 +19,7 @@
 (extend-type MongoDbAlarmRepository
   alarm/AlarmRepository
   (overdue-alarms [repository now]
-    (mc/find-maps (:db repository) alarm-coll {:time {"$lt" now}}))
+    (mc/find-maps (:db repository) alarm-coll {:at {"$lt" now}}))
   (insert [repository alarm-entry]
     (logger/debug "inserting alarm-entry" alarm-entry)
     (mc/insert (:db repository) alarm-coll (merge alarm-entry {:_id (ObjectId.)})))
@@ -49,6 +49,8 @@
 
 (comment
   (mc/find-maps (:db (:alarm/repository @imesc.config/system)) alarm-coll)
+  (let [now (.minusMonths (ZonedDateTime/now) 5)]
+    (mc/find-maps (:db (:alarm/repository @imesc.config/system)) alarm-coll {:at {"$lt" now}}))
   (mc/insert (:db (:alarm/repository @imesc.config/system)) alarm-coll "abc")
   (mc/find-one (:db (:alarm/repository @imesc.config/system)) alarm-coll {:id "2580f5b5-db89-49e4-b762-66a0144de9d9"})
   )
