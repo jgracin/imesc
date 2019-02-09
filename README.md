@@ -38,17 +38,18 @@ The first form should run only unit tests.
 
 ## Design Decisions
 
-We try to avoid having multiple instances of the service because we would have
-to do coordination of schedulers.
+We are not using multiple instances of the service because we would have to
+coordinate multiple schedulers.
 
 If we use only one instance, we can monitor it and restart it if it hangs. E.g.
 if the period of checking for alarms is 30 seconds, and if we are able to detect
 that the service is down within 20 seconds by periodically checking it, then the
 downtime could be reduced to an acceptable level.
 
-We are using Kafka instead of HTTP web service for input requests because then
-we don't need load balancer and multiple instances of the service, which we are
-trying to avoid.
+We are using Kafka instead of HTTP web service for input requests because
+otherwise we would need a load balancer and multiple instances of the service to
+ensure high availability, and we trying to avoid multiple instances for the
+reasons stated above.
 
 ## License
 
