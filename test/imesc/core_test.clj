@@ -8,8 +8,8 @@
 
 (def num-tests 100)
 
-(deftest test-properties
-  (testing "test function properties"
+(deftest generative-tests
+  (testing "generative tests of functions"
     (let [c (fn [sym]
               (let [result (first (stest/check
                                    sym
