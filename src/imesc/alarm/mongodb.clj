@@ -20,9 +20,9 @@
   alarm/AlarmRepository
   (-overdue-alarms [repository now]
     (mc/find-maps (:db repository) alarm-coll {:at {"$lt" now}}))
-  (-insert [repository alarm-entry]
-    (logger/debug "inserting alarm-entry" alarm-entry)
-    (mc/insert (:db repository) alarm-coll (merge alarm-entry {:_id (ObjectId.)})))
+  (-insert [repository alarm-db-entry]
+    (logger/debug "inserting alarm-db-entry" alarm-db-entry)
+    (mc/insert (:db repository) alarm-coll (merge alarm-db-entry {:_id (ObjectId.)})))
   (-delete [repository id]
     (logger/debug "deleting an alarm" id)
     (mc/remove (:db repository) alarm-coll {:id id}))
@@ -49,6 +49,7 @@
 
 (comment
   (mc/find-maps (:db (:alarm/repository @imesc.config/system)) alarm-coll)
+  (alarm/-overdue-alarms (:alarm/repository @imesc.config/system) (.plusMinutes (ZonedDateTime/now) 0))
   (let [now (.minusMonths (ZonedDateTime/now) 5)]
     (mc/find-maps (:db (:alarm/repository @imesc.config/system)) alarm-coll {:at {"$lt" now}}))
   (mc/insert (:db (:alarm/repository @imesc.config/system)) alarm-coll "abc")

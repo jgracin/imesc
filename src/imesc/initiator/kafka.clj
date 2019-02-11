@@ -2,7 +2,8 @@
   (:require [kinsky.client :as client]
             [clojure.edn :as edn]
             [integrant.core :as integrant]
-            [imesc.config :as config])
+            [imesc.config :as config]
+            [clojure.tools.logging :as logger])
   (:import [org.apache.kafka.clients.admin AdminClient KafkaAdminClient NewTopic]
            [java.time Duration]))
 
@@ -13,8 +14,9 @@
       first))
 
 (def kafka-request-polling-fn
-  #(->> (poll-request (:kafka/request-consumer @config/system))
-        (map (comp edn/read-string :value))))
+  (fn []
+    (->> (poll-request (:kafka/request-consumer @config/system))
+         (map (comp edn/read-string :value)))))
 
 (defmethod integrant/init-key :kafka/request-consumer [_ {:keys [topic consumer-opts]}]
   (let [consumer (client/consumer consumer-opts
@@ -50,11 +52,11 @@
 
   (def dummy-request {:action :start
                       :process-id "finpoint"
-                      :descriptors [{:delay-in-seconds 10
-                                       :channel :debug-console
+                      :notifications [{:delay-in-seconds 10
+                                       :channel :console
                                        :params {:message "First dummy notification to console."}}
                                       {:delay-in-seconds 15
-                                       :channel :debug-console
+                                       :channel :console
                                        :params {:message "Second dummy notification to console."}}
                                       {:delay-in-seconds 300
                                        :channel :email
@@ -65,5 +67,6 @@
                                        :channel :phone
                                        :params {:phone-number "38599000001"
                                                 :message "new-order-unconfirmed"}}]})
+  (clojure.spec.alpha/explain-data :imesc/request dummy-request)
   (client/send! producer "imesc.requests" "r2" dummy-request)
   )

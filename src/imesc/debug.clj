@@ -29,7 +29,7 @@
   ;; RoomOrders Escalation Adapter services
   ;;
   ["PUT /restaurant/finpoint/configuration"
-   {:descriptors [{:delay 10
+   {:notifications [{:delay 10
                      :channel :console
                      :params {:message "First dummy notification to console."}}
                     {:delay 15
@@ -63,21 +63,21 @@
   ;;
   [{:action :start
     :process-id "finpoint"
-    :descriptors [{:delay-in-seconds 10
-                     :channel :console
-                     :params {:message "First dummy notification to console."}}
-                    {:delay-in-seconds 15
-                     :channel :console
-                     :params {:message "Second dummy notification to console."}}
-                    {:delay-in-seconds 300
-                     :channel "email"
-                     :params {:to ["orders@example.com"]
-                              :subject "You have unconfirmed new orders in RoomOrders."
-                              :body "Visit https://roomorders.com."}}
-                    {:delay-in-seconds 600
-                     :channel "phone"
-                     :params {:phone-number "38599000001"
-                              :message "new-order-unconfirmed"}}]}
+    :notifications [{:delay-in-seconds 10
+                   :channel :console
+                   :params {:message "First dummy notification to console."}}
+                  {:delay-in-seconds 15
+                   :channel :console
+                   :params {:message "Second dummy notification to console."}}
+                  {:delay-in-seconds 300
+                   :channel "email"
+                   :params {:to ["orders@example.com"]
+                            :subject "You have unconfirmed new orders in RoomOrders."
+                            :body "Visit https://roomorders.com."}}
+                  {:delay-in-seconds 600
+                   :channel "phone"
+                   :params {:phone-number "38599000001"
+                            :message "new-order-unconfirmed"}}]}
    {:action :stop
     :process-id "finpoint"}]
 
@@ -86,25 +86,25 @@
   ;;
   {:id "finpoint"
    :at "2018-11-28T12:10:00Z"
-   :data [:descriptors [{:id "ec42d337-97bf-4956-acf4-3e2b67934b9e"
-                         :at "2018-11-28T12:10:00Z"
-                         :channel :console
-                         :params {:message "First dummy notification to console."}}
-                        {:id "aafeef27-d5b4-441e-bb09-c7c2930c449f"
-                         :at "2018-11-28T12:10:00Z"
-                         :channel :console
-                         :params {:message "Second dummy notification to console."}}
-                        {:id "97e2e924-fb41-4365-9b78-67b4ff29cca3"
-                         :at "2018-11-28T12:10:00Z"
-                         :channel :email
-                         :params {:to ["orders@example.com"]
-                                  :subject "You have unconfirmed new orders in RoomOrders."
-                                  :body "Visit https://roomorders.com."}}
-                        {:id "bfd2bfa2-e7b1-4896-b909-fcabb22c62dc"
-                         :at "2018-11-28T12:10:00Z"
-                         :channel :phone
-                         :params {:phone-number "38599000001"
-                                  :message "new-order-unconfirmed"}}]]}
+   :notifications [{:id "ec42d337-97bf-4956-acf4-3e2b67934b9e"
+                  :at "2018-11-28T12:10:00Z"
+                  :channel :console
+                  :params {:message "First dummy notification to console."}}
+                 {:id "aafeef27-d5b4-441e-bb09-c7c2930c449f"
+                  :at "2018-11-28T12:10:00Z"
+                  :channel :console
+                  :params {:message "Second dummy notification to console."}}
+                 {:id "97e2e924-fb41-4365-9b78-67b4ff29cca3"
+                  :at "2018-11-28T12:10:00Z"
+                  :channel :email
+                  :params {:to ["orders@example.com"]
+                           :subject "You have unconfirmed new orders in RoomOrders."
+                           :body "Visit https://roomorders.com."}}
+                 {:id "bfd2bfa2-e7b1-4896-b909-fcabb22c62dc"
+                  :at "2018-11-28T12:10:00Z"
+                  :channel :phone
+                  :params {:phone-number "38599000001"
+                           :message "new-order-unconfirmed"}}]}
 
   ;;
   ;; Console Notifier

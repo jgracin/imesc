@@ -18,8 +18,9 @@
                 (if (:failure result)
                   (throw (:failure result))
                   true)))]
-      (is (c `initiator/alarm-entry))
+      (is (c `initiator/alarm-db-entry))
       (is (c `initiator/next-action))
-      (is (c `activator/descriptor->request)))))
+      (is (c `activator/notification->notifier-request))
+      (is (c `activator/due?)))))
 
 

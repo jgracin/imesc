@@ -11,6 +11,8 @@
 
 (def should-exit? (atom false))
 
+(def default-activator-poll-millis (or (env "ACTIVATOR_POLL_MILLIS") 5000))
+
 ;; We must synchronize alarm repository access between the Initiator and the
 ;; Activator to avoid race conditions when canceling and updating alarms.
 (defonce repository-lock (Object.))
@@ -38,6 +40,14 @@
   (logger/info "Starting...")
   (.addShutdownHook (Runtime/getRuntime) (Thread. #(reset! should-exit? false)))
   (reset! config/system (initialize!))
-  (let [main-loop (make-kafka-based-main-input-loop (fn [] @should-exit?))]
-    (future (main-loop))))
+  (let [activator-loop (activator/make-activator-loop default-activator-poll-millis
+                                                      (fn [] @should-exit?)
+                                                      activator/default-repository-polling-fn
+                                                      activator/default-processing-fn)]
+    (future (activator-loop)))
+  (let [initiator-loop (make-kafka-based-main-input-loop (fn [] @should-exit?))]
+    (future (initiator-loop))))
 
+(comment
+  (reset! should-exit? false)
+  )

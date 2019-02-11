@@ -27,7 +27,7 @@
 (defn dummy-start-request [process-id]
   {:action :start
    :process-id process-id
-   :descriptors [{:delay-in-seconds 10
+   :notifications [{:delay-in-seconds 10
                     :channel :console
                     :params {:message "First dummy notification to console."}}
                    {:delay-in-seconds 15
@@ -47,7 +47,7 @@
 
 (defn polling-wait
   ([success-condition-fn]
-   (polling-wait success-condition-fn 5000))
+   (polling-wait success-condition-fn 60000))
   ([success-condition-fn timeout-ms]
    (polling-wait success-condition-fn timeout-ms 100))
   ([success-condition-fn timeout-ms polling-period-ms]
@@ -62,8 +62,8 @@
   (client/producer {:bootstrap.servers "localhost:9092"
                     :batch.size 0
                     :acks "all"
-                    :max.block.ms 5000
-                    :request.timeout.ms 5000}
+                    :max.block.ms 9000
+                    :request.timeout.ms 9000}
                    (client/string-serializer)
                    (client/edn-serializer)))
 
@@ -71,8 +71,10 @@
   (testing "successfully creating a new escalation process"
     (let [should-exit? (atom false)
           main-loop (core/make-kafka-based-main-input-loop (fn [] @should-exit?))
-          process-id (str (java.util.UUID/randomUUID))]
-      (client/send! (create-producer) input-topic process-id (dummy-start-request process-id))
+          process-id (str (java.util.UUID/randomUUID))
+          producer (create-producer)]
+      (client/send! producer input-topic process-id (dummy-start-request process-id))
+      (client/flush! producer)
       (let [t (future (main-loop))]
         (try
           (logger/info "waiting for process id to appear in db" process-id)
@@ -80,3 +82,12 @@
                            #(alarm/exists? (:alarm/repository @config/system) process-id))))
           (finally (reset! should-exit? true)))
         (polling-wait #(future-done? t))))))
+
+
+(comment
+  (def p (create-producer))
+  (let [process-id (str (java.util.UUID/randomUUID))]
+    (client/send! p input-topic process-id (dummy-start-request process-id)))
+  
+
+  )

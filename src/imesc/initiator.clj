@@ -6,77 +6,38 @@
             [clojure.edn :as edn]
             [clojure.string :as string]
             [clojure.set :refer [subset?]]
+            [imesc.spec]
             [imesc.util :refer [ignoring-exceptions ignoring-exceptions-but-with-sleep]]
             [imesc.config :as config]
             [imesc.alarm :as alarm]
             [imesc.alarm.mongodb]
             [environ.core :refer [env]])
-  (:import imesc.alarm.AlarmRepository
-           (java.time ZonedDateTime ZoneId Instant)))
+  (:import (java.time ZonedDateTime ZoneId Instant)
+           imesc.alarm.AlarmRepository
+           java.util.UUID))
 
-(s/def :email/address
-  (s/with-gen
-    (s/and :common/non-empty-string #(re-matches #"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,63}$" %))
-    (fn [] (gen/fmap (fn [[username subdomain]]
-                      (str username "@" subdomain ".com"))
-                    (s/gen (s/tuple :common/non-empty-string
-                                    :common/non-empty-string))))))
-(s/def :email/to                        (s/coll-of :email/address))
-(s/def :email/subject                   :common/non-empty-string)
-(s/def :email/body                      :common/non-empty-string)
-(s/def :notification/message            :common/non-empty-string)
-(s/def :notification/channel            #{:console :email :phone})
-(s/def :notification/delay-in-seconds   (s/int-in 1 (* 3600 24)))
-(s/def :notification/id                 :common/non-empty-string)
-(s/def :notifier/params                 (s/or :console-params (s/keys :req-un [:notification/message])
-                                              :email-params (s/keys :req-un [:email/to
-                                                                             :email/subject
-                                                                             :email/body])
-                                              :phone-params (s/keys :req-un [:common/phone-number
-                                                                             :notification/message])))
-(s/def :notification/descriptor         (s/keys :req-un [:notification/delay-in-seconds
-                                                         :notification/channel]
-                                                :opt-un [:notifier/params]))
-(s/def :notification/descriptors        (s/coll-of :notification/descriptor))
-(s/def :imesc/process-id                :common/non-empty-string)
-(s/def :imesc/action                    #{:start :stop})
-(s/def :imesc/request                   (s/keys :req-un [:imesc/process-id
-                                                         :imesc/action]
-                                                :opt-un [:notification/descriptors]))
-(s/def :alarm/id                        :common/non-empty-string)
-(s/def :alarm/at                        :common/zoned-date-time)
-(s/def :alarm/descriptor                (s/keys :req-un [:notification/id
-                                                         :alarm/at
-                                                         :notification/delay-in-seconds
-                                                         :notification/channel]
-                                                :opt-un [:notifier/params]))
-(s/def :alarm/descriptors               (s/coll-of :alarm/descriptor))
-(s/def :imesc/alarm-entry               (s/keys :req-un [:alarm/id
-                                                         :alarm/at
-                                                         :alarm/descriptors]))
-
-(defn assign-absolute-time [now descriptor]
-  (assoc descriptor :at (.plusSeconds now (:delay-in-seconds descriptor))))
+(defn assign-absolute-time [now notification]
+  (assoc notification :at (.plusSeconds now (:delay-in-seconds notification))))
 
 (defn assign-id [m]
-  (assoc m :id (str (java.util.UUID/randomUUID))))
+  (assoc m :id (str (UUID/randomUUID))))
 
-(defn alarm-entry [id descriptors now]
-  (let [alarm-descriptors (->> descriptors
-                               (map (partial assign-absolute-time now))
-                               (map assign-id)
-                               (sort-by :at))]
+(defn alarm-db-entry [id notifications now]
+  (let [sorted-notifications (->> notifications
+                                  (map (partial assign-absolute-time now))
+                                  (map assign-id)
+                                  (sort-by :at))]
     {:id id
-     :at (-> alarm-descriptors  first :at)
-     :descriptors alarm-descriptors}))
+     :at (-> sorted-notifications first :at)
+     :notifications sorted-notifications}))
 
-(s/fdef alarm-entry
+(s/fdef alarm-db-entry
   :args (s/cat :id :alarm/id
-               :descriptors (s/coll-of :notification/descriptor :min-count 1)
+               :notifications (s/coll-of :notification/notification :min-count 1)
                :now :common/zoned-date-time)
-  :ret :imesc/alarm-entry
-  :fn (fn [m] (= (count (-> m :args :descriptors))
-                (count (-> m :ret :descriptors)))))
+  :ret :imesc/alarm-db-entry
+  :fn (fn [m] (= (count (-> m :args :notifications))
+                (count (-> m :ret :notifications)))))
 
 (defn valid? [request]
   (s/valid? :imesc/request request))
@@ -103,7 +64,7 @@
         now (java.time.ZonedDateTime/now)]
     (case (next-action request process-already-exists?)
       :create-new-process
-      (alarm/insert r (alarm-entry (:process-id request) (:descriptors request) now))
+      (alarm/set-alarm r (alarm-db-entry (:process-id request) (:notifications request) now))
 
       :cancel-process
       (alarm/delete r pid)
@@ -139,3 +100,4 @@
             (request-processing-fn request)))))
       (when-not (exit-condition-fn) (recur)))
     (logger/info "Main input loop finished.")))
+
