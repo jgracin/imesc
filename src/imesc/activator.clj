@@ -8,9 +8,7 @@
             [imesc.alarm :as alarm]
             [imesc.util :as util :refer [ignoring-exceptions-but-with-sleep
                                          ignoring-exceptions]]
-            [clojure.spec.alpha :as s]
-            [clojure.spec.test.alpha :as stest]
-            [clojure.spec.gen.alpha :as gen])
+            [clojure.spec.alpha :as s])
   (:import java.time.ZonedDateTime
            imesc.alarm.AlarmRepository))
 
@@ -84,13 +82,10 @@
     (logger/info "Activator polling finished.")))
 
 (comment
-  (require '[clojure.spec.test.alpha :as stest])
+  (require '[clojure.spec.test.alpha :as stest]
+           '[clojure.spec.gen.alpha :as gen])
   (stest/check `notification->notifier-request)
   (gen/sample (s/gen :alarm/notification))
-
-  (notification->notifier-request {:params { :message "HEPs4" },
-                        :id "E7OvMBE", :at "1970-01-01T01:00+01:00[Europe/Zagreb]",
-                        :delay-in-seconds 21, :channel :console})
 
   (def oda (alarm/overdue-alarms (:alarm/repository @config/system)
                                  (ZonedDateTime/now)))
@@ -98,5 +93,4 @@
 
   (let [activator-loop (make-activator-loop)]
     (future (activator-loop)))
-  (reset! should-exit? true)
   )
