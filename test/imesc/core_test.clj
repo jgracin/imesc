@@ -21,6 +21,7 @@
       (is (c `initiator/alarm-db-entry))
       (is (c `initiator/next-action))
       (is (c `activator/notification->notifier-request))
-      (is (c `activator/due?)))))
+      (is (c `activator/due?))
+      (is (c `activator/->updated-alarm)))))
 
 

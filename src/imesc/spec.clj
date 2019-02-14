@@ -56,6 +56,10 @@
                                                          :notification/channel]
                                                 :opt-un [:notifier/params]))
 (s/def :alarm/notifications             (s/coll-of :alarm/notification))
-(s/def :imesc/alarm-db-entry               (s/keys :req-un [:alarm/id
+(s/def :imesc/alarm-db-entry            (s/keys :req-un [:alarm/id
                                                          :alarm/at
                                                          :alarm/notifications]))
+
+(s/def :activator/notifier-request      (s/or :console :notifier/console-request
+                                              :phone :notifier/phone-request
+                                              :email :notifier/email-request))

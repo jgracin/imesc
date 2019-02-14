@@ -2,6 +2,7 @@
   (:require [clojure.test :refer :all]
             [imesc.core :as core]
             [imesc.initiator :as initiator]
+            [imesc.activator :as activator]
             [imesc.config :as config]
             [imesc.alarm :as alarm]
             [imesc.alarm.mongodb]
@@ -11,7 +12,7 @@
             [clojure.tools.logging :as logger]
             [clojure.spec.alpha :as s]
             [clojure.spec.test.alpha :as st])
-  (:import [java.time Duration]))
+  (:import [java.time Duration ZonedDateTime]))
 
 (defn with-instrumentation [f]
   (st/instrument)
@@ -83,6 +84,27 @@
           (finally (reset! should-exit? true)))
         (polling-wait #(future-done? t))))))
 
+(deftest ^:integration activator
+  (testing "succesfully processing activations"
+    (let [now (ZonedDateTime/now)
+          alarm {:id "0000" :at now
+                 :notifications [{:id "0" :at (.plusMinutes now 0)
+                                  :channel :console
+                                  :params {:message "0"}
+                                  :delay-in-seconds 1}
+                                 {:id "1" :at (.plusMinutes now 1)
+                                  :channel :console
+                                  :params {:message "1"}
+                                  :delay-in-seconds 1}
+                                 {:id "2" :at (.plusMinutes now 2)
+                                  :channel :console
+                                  :params {:message "2"}
+                                  :delay-in-seconds 1}
+                                 {:id "3" :at (.plusMinutes now 3)
+                                  :channel :console
+                                  :params {:message "3"}
+                                  :delay-in-seconds 1}]}]
+      (is nil? (activator/process alarm (:alarm/repository @config/system) (.plusMinutes now 2))))))
 
 (comment
   (def p (create-producer))
