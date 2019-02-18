@@ -76,6 +76,15 @@
           (first times)
           times))
 
+(s/fdef earliest
+  :args (s/cat :times (s/coll-of :common/zoned-date-time))
+  :fn (fn [{:keys [args ret]}]
+        (if (not (empty? (:times args)))
+          (= (first (sort (:times args)))
+             ret)
+          true))
+  :ret (s/nilable :common/zoned-date-time))
+
 (defn process [alarm repository now]
   (let [due-notifs (filter (partial due? now) (:notifications alarm))
         non-due-notifs (filter (complement (partial due? now)) (:notifications alarm))

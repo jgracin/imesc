@@ -43,7 +43,7 @@
                       :clojure.spec.test.check/ret
                       :result)]
        (if (= true result) :success result))))
-  (replcheck 'imesc.activator/->notifier-request)
+  (replcheck 'imesc.activator/earliest 100)
   )
 
 (comment
