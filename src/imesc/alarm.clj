@@ -15,7 +15,7 @@
   (-overdue-alarms repository now))
 
 (s/fdef overdue-alarms
-  :args (s/cat :repository (partial instance? AlarmRepository)
+  :args (s/cat :repository (partial satisfies? AlarmRepository)
                :now :common/zoned-date-time)
   :ret (s/coll-of :imesc/alarm-db-entry))
 

@@ -5,7 +5,12 @@
             [clojurewerkz.quartzite.jobs :as jobs :refer [defjob]]
             [clojurewerkz.quartzite.triggers :as triggers]
             [clojurewerkz.quartzite.schedule.simple :as simple]
-            [imesc.config :as config]))
+            [imesc.config :as config]
+            [imesc.spec]
+            [clojure.spec.test.alpha :as stest]
+            [orchestra.spec.test]
+            [clojure.spec.gen.alpha :as gen]
+            [imesc.spec-patch]))
 
 (comment
   "Quartzite scheduler"
@@ -21,6 +26,24 @@
                                          (simple/with-repeat-count 10)
                                          (simple/with-interval-in-milliseconds 1000)))))
   (scheduler/schedule s job1 trigger)
+  )
+
+(comment
+  "Spec checks"
+  (defn replcheck
+    "Run a test.check check on a sym."
+    ([sym]
+     (replcheck sym 20))
+    ([sym num-tests]
+     (orchestra.spec.test/instrument)
+     (let [opts {:clojure.spec.test.check/opts {:num-tests num-tests}
+                 :assert-checkable true}
+           result (-> (stest/check sym opts)
+                      first
+                      :clojure.spec.test.check/ret
+                      :result)]
+       (if (= true result) :success result))))
+  (replcheck 'imesc.activator/->notifier-request)
   )
 
 (comment

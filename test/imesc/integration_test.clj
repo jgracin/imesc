@@ -11,11 +11,12 @@
             [integrant.core :as integrant]
             [clojure.tools.logging :as logger]
             [clojure.spec.alpha :as s]
-            [clojure.spec.test.alpha :as st])
+            [clojure.spec.test.alpha :as st]
+            [orchestra.spec.test])
   (:import [java.time Duration ZonedDateTime]))
 
 (defn with-instrumentation [f]
-  (st/instrument)
+  (orchestra.spec.test/instrument)
   (f))
 
 (defn with-initialized-system [f]

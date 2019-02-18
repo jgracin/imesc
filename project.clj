@@ -11,6 +11,7 @@
                  [spootnik/kinsky "0.1.23"]
                  [com.novemberain/monger "3.5.0"]
                  [clojurewerkz/quartzite "2.1.0"]
+                 [orchestra "2019.02.06-1"]
                  [environ "1.1.0"]
                  [org.clojure/tools.logging "0.4.1"]
                  [ch.qos.logback/logback-classic "1.2.3"]]
