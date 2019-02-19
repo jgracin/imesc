@@ -81,8 +81,6 @@ these, we plan to measure how well the code structure maps to these traits.
 * There are three notifiers: email, phone call and console printer.
 * Each notifier receives requests through a notifier-specific Kafka requests
   topic (e.g. topic.email.requests).
-* Notifiers report status of delivery through a notifier-specific Kafka results
-  topic in Kafka (e.g. topic.email.results).
 
 
 Measure the following in the code:
