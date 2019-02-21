@@ -20,9 +20,9 @@
   (f))
 
 (defn with-initialized-system [f]
-  (reset! config/system (core/initialize!))
+  (config/initialize!)
   (f)
-  (integrant/halt! @config/system))
+  (config/halt!))
 
 (use-fixtures :once with-instrumentation with-initialized-system)
 
@@ -81,7 +81,7 @@
         (try
           (logger/info "waiting for process id to appear in db" process-id)
           (is (= :success (polling-wait
-                           #(alarm/exists? (:alarm/repository @config/system) process-id))))
+                           #(alarm/exists? (:alarm/repository (config/system)) process-id))))
           (finally (reset! should-exit? true)))
         (polling-wait #(future-done? t))))))
 
@@ -105,7 +105,7 @@
                                   :channel :console
                                   :params {:message "3"}
                                   :delay-in-seconds 1}]}]
-      (is nil? (activator/process alarm (:alarm/repository @config/system) (.plusMinutes now 2))))))
+      (is nil? (activator/process alarm (:alarm/repository (config/system)) (.plusMinutes now 2))))))
 
 (comment
   (def p (create-producer))

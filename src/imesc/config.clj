@@ -2,11 +2,17 @@
   (:require [integrant.core :as integrant]
             [environ.core :refer [env]]))
 
-(defonce system (atom {}))
+(defonce -system (atom {}))
+
+(defn system [] @-system)
 
 (def request-topic (or (env "REQUEST_TOPIC") "imesc.requests"))
 
 (def bootstrap-servers (or (env "KAFKA_BOOTSTRAP_SERVERS") "localhost:9092"))
+
+(def repository-hostname (or (env "REPOSITORY_HOSTNAME") "localhost"))
+
+(def repository-port (or (env "REPOSITORY_PORT") 27017))
 
 (def config
   {:kafka/request-consumer {:topic request-topic
@@ -16,9 +22,23 @@
                                             :auto.commit.interval.ms 1000
                                             :max.poll.records 1
                                             :max.poll.interval.ms 10000}}
-   :alarm/repository {:host "localhost" :port 27017}
+   :alarm/repository {:host repository-hostname :port repository-port}
    :kafka/producer {:bootstrap.servers bootstrap-servers
                     :client.id "imesc.activator"
                     :batch.size 0
                     :acks "all"
                     :request.timeout.ms 10000}})
+
+(defn initialize!
+  ([]
+   (initialize! config))
+  ([configuration]
+   (reset! -system (-> configuration
+                       integrant/prep
+                       integrant/init))))
+
+(defn halt!
+  ([]
+   (halt! (system)))
+  ([system]
+   (integrant.core/halt! system)))

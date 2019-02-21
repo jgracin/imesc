@@ -103,13 +103,13 @@
 
 (def default-repository-polling-fn
   (fn []
-    (alarm/overdue-alarms (:alarm/repository @config/system)
+    (alarm/overdue-alarms (:alarm/repository (config/system))
                           (ZonedDateTime/now))))
 
 (def default-processing-fn
   (fn [alarm]
     (process alarm
-             (:alarm/repository @config/system)
+             (:alarm/repository (config/system))
              (ZonedDateTime/now))))
 
 ;; FIXME We're not locking the repository and we should. Use
@@ -132,7 +132,7 @@
 (comment
   (gen/sample (s/gen :alarm/notification))
 
-  (def oda (alarm/overdue-alarms (:alarm/repository @config/system)
+  (def oda (alarm/overdue-alarms (:alarm/repository (config/system))
                                  (ZonedDateTime/now)))
   (:params (first oda))
 

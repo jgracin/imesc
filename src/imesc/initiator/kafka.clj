@@ -15,7 +15,7 @@
 
 (def kafka-request-polling-fn
   (fn []
-    (->> (poll-request (:kafka/request-consumer @config/system))
+    (->> (poll-request (:kafka/request-consumer (config/system)))
          (map (comp edn/read-string :value)))))
 
 (defmethod integrant/init-key :kafka/request-consumer [_ {:keys [topic consumer-opts]}]
