@@ -1,4 +1,4 @@
-(ns imesc.notifier.phone
+(ns imesc.activator.phone
   (:require [clojure.tools.logging :as logger]
             [imesc.activator :as activator]))
 

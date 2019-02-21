@@ -48,10 +48,16 @@
     (ZonedDateTime/ofInstant (.toInstant input) (java.time.ZoneId/systemDefault))))
 
 (comment
-  (mc/find-maps (:db (:alarm/repository @imesc.config/system)) alarm-coll)
-  (alarm/-overdue-alarms (:alarm/repository @imesc.config/system) (.plusMinutes (ZonedDateTime/now) 0))
+  (defn repo [] (:alarm/repository @imesc.config/system))
+  (defn db [] (:db (repo)))
+  (mc/find-maps (db) alarm-coll)
+  (mc/remove (db) alarm-coll {:id "finpoint"})
+  (alarm/-overdue-alarms (repo) (.plusMinutes (ZonedDateTime/now) 0))
   (let [now (.minusMonths (ZonedDateTime/now) 5)]
-    (mc/find-maps (:db (:alarm/repository @imesc.config/system)) alarm-coll {:at {"$lt" now}}))
-  (mc/insert (:db (:alarm/repository @imesc.config/system)) alarm-coll "abc")
-  (mc/find-one (:db (:alarm/repository @imesc.config/system)) alarm-coll {:id "2580f5b5-db89-49e4-b762-66a0144de9d9"})
+    (mc/find-maps (db) alarm-coll {:at {"$lt" now}}))
+  (mc/insert (db) alarm-coll "abc")
+  (mc/find-one (db) alarm-coll {:id "2580f5b5-db89-49e4-b762-66a0144de9d9"})
+
+  (alarm/set-alarm (repo) {:at (ZonedDateTime/now) :id "finpoint" :notifications []})
+
   )

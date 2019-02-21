@@ -14,23 +14,23 @@
            (imesc.alarm AlarmRepository)))
 
 (s/def :notifier/console-request
-  (s/keys :req-un [:notification/id :notification/at]
+  (s/keys :req-un [:notification/id :notification/at :notification/channel]
           :opt-un [:notification/message]))
 
 (s/def :notifier/email-request
-  (s/keys :req-un [:notification/id :notification/at
+  (s/keys :req-un [:notification/id :notification/at :notification/channel
                    :email/to :email/subject :email/body]))
 
 (s/def :notifier/phone-request
-  (s/keys :req-un [:notification/id :notification/at
+  (s/keys :req-un [:notification/id :notification/at :notification/channel
                    :common/phone-number]))
 
 (defmulti activate
   "Activates notifications through the channel specified in params."
-  (keyword :channel))
+  (fn [request] (keyword (:channel request))))
 
-(defmethod activate :default [notification]
-  (logger/error "Unknown notification channel, not activating! notification=" notification))
+(defmethod activate :default [request]
+  (logger/error "Unknown notification channel, not activating! request=" request))
 
 (defn- ->notifier-request
   [notification]
@@ -90,7 +90,7 @@
         non-due-notifs (filter (complement (partial due? now)) (:notifications alarm))
         requests (map ->notifier-request due-notifs)]
     (doseq [r requests] (activate r))
-    (when (seq non-due-notifs)
+    (when (seq due-notifs)
       (update-db-alarm repository (assoc alarm
                                          :notifications non-due-notifs
                                          :at (->> non-due-notifs (map :at) earliest))))))
@@ -112,6 +112,8 @@
              (:alarm/repository @config/system)
              (ZonedDateTime/now))))
 
+;; FIXME We're not locking the repository and we should. Use
+;; core/repository-lock.
 (defn make-activator-loop
   [sleep-millis exit-condition-fn polling-fn processing-fn]
   (fn []
@@ -136,4 +138,6 @@
 
   (let [activator-loop (make-activator-loop)]
     (future (activator-loop)))
+
+  (ns-unmap *ns* 'activate)
   )

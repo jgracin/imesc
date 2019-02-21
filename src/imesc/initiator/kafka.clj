@@ -50,23 +50,28 @@
                      (client/string-serializer)
                      (client/edn-serializer)))
 
-  (def dummy-request {:action :start
-                      :process-id "finpoint"
-                      :notifications [{:delay-in-seconds 10
-                                       :channel :console
-                                       :params {:message "First dummy notification to console."}}
-                                      {:delay-in-seconds 15
-                                       :channel :console
-                                       :params {:message "Second dummy notification to console."}}
-                                      {:delay-in-seconds 300
-                                       :channel :email
-                                       :params {:to ["orders@example.com"]
-                                                :subject "You have unconfirmed new orders in RoomOrders."
-                                                :body "Visit https://roomorders.com."}}
-                                      {:delay-in-seconds 600
-                                       :channel :phone
-                                       :params {:phone-number "38599000001"
-                                                :message "new-order-unconfirmed"}}]})
-  (clojure.spec.alpha/explain-data :imesc/request dummy-request)
-  (client/send! producer "imesc.requests" "r2" dummy-request)
+  (def sample-start-request
+    {:action :start
+     :process-id "finpoint"
+     :notifications [{:delay-in-seconds 10
+                      :channel :console
+                      :params {:message "First dummy notification to console."}}
+                     {:delay-in-seconds 15
+                      :channel :console
+                      :params {:message "Second dummy notification to console."}}
+                     {:delay-in-seconds 300
+                      :channel :email
+                      :params {:to ["orders@example.com"]
+                               :subject "You have unconfirmed new orders in RoomOrders."
+                               :body "Visit https://roomorders.com."}}
+                     {:delay-in-seconds 600
+                      :channel :phone
+                      :params {:phone-number "38599000001"
+                               :message "new-order-unconfirmed"}}]})
+  (def sample-stop-request
+    {:action :stop
+     :process-id "finpoint"})
+  (client/send! producer "imesc.requests" "key1" sample-start-request)
+  (client/send! producer "imesc.requests" "key1" sample-stop-request)
+
   )

@@ -5,9 +5,11 @@
             [imesc.initiator.kafka :as initiator.kafka]
             [imesc.activator :as activator]
             [imesc.activator.kafka :as activator.kafka]
+            [imesc.notifier.console]
+            [imesc.notifier.email]
+            [imesc.notifier.phone]
             [integrant.core :as integrant]
-            [environ.core :refer [env]])
-  (:gen-class))
+            [environ.core :refer [env]]))
 
 (def should-exit? (atom false))
 
@@ -49,5 +51,11 @@
     (future (initiator-loop))))
 
 (comment
+  (-main)
+  (reset! should-exit? true)
   (reset! should-exit? false)
+  (integrant/halt! @config/system)
+  (satisfies? imesc.alarm/AlarmRepository (:alarm/repository @config/system))
+  (activator/activate {:id "3f18c862-5406-4246-a15c-33205966b06b" :at (java.time.ZonedDateTime/now),
+                       :channel "phone" :phone-number "38599000001" :message "new-order-unconfirmed"})
   )

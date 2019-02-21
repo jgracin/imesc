@@ -1,4 +1,4 @@
-(ns imesc.notifier.email
+(ns imesc.activator.email
   (:require [clojure.tools.logging :as logger]
             [imesc.activator :as activator]))
 
