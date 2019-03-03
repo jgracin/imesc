@@ -13,7 +13,6 @@
             [imesc.alarm.mongodb]
             [environ.core :refer [env]])
   (:import (java.time ZonedDateTime ZoneId Instant)
-           imesc.alarm.AlarmRepository
            java.util.UUID))
 
 (defn assign-absolute-time [now notification]
@@ -35,7 +34,7 @@
   :args (s/cat :id :alarm/id
                :notifications (s/coll-of :notification/notification :min-count 1)
                :now :common/zoned-date-time)
-  :ret :imesc/alarm-db-entry
+  :ret :alarm/alarm
   :fn (fn [m] (= (count (-> m :args :notifications))
                 (count (-> m :ret :notifications)))))
 
@@ -58,7 +57,7 @@
   :args (s/cat :request :imesc/request :process-exists? boolean?)
   :ret #{:create-new-process :cancel-process :ignore-request})
 
-(defn process-request [^AlarmRepository r request]
+(defn process-request [r request]
   (let [pid (:process-id request)
         process-already-exists? (boolean (alarm/exists? r pid))
         now (java.time.ZonedDateTime/now)]

@@ -12,7 +12,3 @@
 (defmethod integrant/halt-key! :kafka/producer [_ producer]
   (client/close! producer))
 
-(defn send! [configuration topic k v]
-  {:pre [(contains? configuration :kafka/producer)
-         (string? topic)]}
-  (client/send! (:kafka/producer configuration) topic k v))

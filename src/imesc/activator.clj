@@ -1,6 +1,5 @@
 (ns imesc.activator
-  "Activator periodically scans alarm repository and activates notifiers by
-  sending them activation messages."
+  "Activator periodically scans alarm repository and activates notifiers."
   (:require [clojure.tools.logging :as logger]
             [imesc.config :as config]
             [imesc.initiator :as initiator]
@@ -10,8 +9,7 @@
                                          ignoring-exceptions]]
             [clojure.spec.alpha :as s]
             [clojure.spec.test.alpha :as stest])
-  (:import (java.time ZonedDateTime)
-           (imesc.alarm AlarmRepository)))
+  (:import java.time.ZonedDateTime))
 
 (s/def :notifier/console-request
   (s/keys :req-un [:notification/id :notification/at :notification/channel]
@@ -27,10 +25,10 @@
 
 (defmulti activate
   "Activates notifications through the channel specified in params."
-  (fn [request] (keyword (:channel request))))
+  (fn [system request] (keyword (:channel request))))
 
-(defmethod activate :default [request]
-  (logger/error "Unknown notification channel, not activating! request=" request))
+(defmethod activate :default [system request]
+  (logger/error "Unknown notification channel, NOT activating! request=" request))
 
 (defn- ->notifier-request
   [notification]
@@ -50,14 +48,6 @@
   :args (s/cat :now :common/zoned-date-time
                :notification :alarm/notification)
   :ret boolean?)
-
-(defn- update-db-alarm [repository alarm]
-  (alarm/delete repository (:id alarm))
-  (alarm/set-alarm repository alarm))
-
-(s/fdef update-db-alarm
-  :args (s/cat :repository (partial satisfies? imesc.alarm/AlarmRepository)
-               :alarm :imesc/alarm-db-entry))
 
 (defn ->requests [notifications now]
   (->> (filter (partial due? now) notifications)
@@ -85,32 +75,49 @@
           true))
   :ret (s/nilable :common/zoned-date-time))
 
-(defn process [alarm repository now]
-  (let [due-notifs (filter (partial due? now) (:notifications alarm))
-        non-due-notifs (filter (complement (partial due? now)) (:notifications alarm))
-        requests (map ->notifier-request due-notifs)]
-    (doseq [r requests] (activate r))
-    (when (seq due-notifs)
-      (update-db-alarm repository (assoc alarm
-                                         :notifications non-due-notifs
-                                         :at (->> non-due-notifs (map :at) earliest))))))
+(defn requests-to-send
+  "Returns notifier requests which are due to be sent based on `alarm` and current
+  time in `now`."
+  [alarm now]
+  (->> (:notifications alarm)
+       (filter (partial due? now))
+       (map ->notifier-request)))
+
+(defn remaining-notifications [notifications now]
+  (filter (complement (partial due? now)) notifications))
+
+(defn up-to-date-alarm
+  "Returns alarm with pruned notifications based on time `now`."
+  [alarm now]
+  (let [notifs (remaining-notifications (:notifications alarm) now)]
+    (when notifs
+      (assoc alarm
+             :notifications notifs
+             :at (->> notifs (map :at) earliest)))))
+
+(defn process [repository alarm now]
+  (let [requests (requests-to-send alarm now)]
+    (doseq [request requests]
+      (ignoring-exceptions
+       (activate nil request))) ;; FIXME
+    (let [alarm' (up-to-date-alarm alarm now)]
+      (if (empty? (:notifications alarm'))
+        (alarm/delete repository (:id alarm))
+        (alarm/set-alarm repository alarm')))))
 
 (s/fdef process
-  :args (s/cat :alarm :imesc/alarm-db-entry
-               :repository (partial satisfies? imesc.alarm/AlarmRepository)
+  :args (s/cat :repository :imesc/repository
+               :alarm :alarm/alarm
                :now :common/zoned-date-time)
   :ret any?)
 
-(def default-repository-polling-fn
+(defn default-repository-polling-fn [repository]
   (fn []
-    (alarm/overdue-alarms (:alarm/repository (config/system))
-                          (ZonedDateTime/now))))
+    (alarm/overdue-alarms repository (ZonedDateTime/now))))
 
-(def default-processing-fn
+(defn default-processing-fn [repository producer]
   (fn [alarm]
-    (process alarm
-             (:alarm/repository (config/system))
-             (ZonedDateTime/now))))
+    (process repository alarm (ZonedDateTime/now))))
 
 ;; FIXME We're not locking the repository and we should. Use
 ;; core/repository-lock.
@@ -131,10 +138,6 @@
 
 (comment
   (gen/sample (s/gen :alarm/notification))
-
-  (def oda (alarm/overdue-alarms (:alarm/repository (config/system))
-                                 (ZonedDateTime/now)))
-  (:params (first oda))
 
   (let [activator-loop (make-activator-loop)]
     (future (activator-loop)))

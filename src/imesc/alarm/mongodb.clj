@@ -5,7 +5,8 @@
             [integrant.core :as integrant]
             [environ.core :refer [env]]
             [clojure.tools.logging :as logger]
-            [monger.conversion])
+            [monger.conversion]
+            [clojure.spec.alpha :as s])
   (:import (com.mongodb MongoOptions ServerAddress WriteConcern)
            (org.bson.types ObjectId)
            (java.time ZonedDateTime)
@@ -16,12 +17,19 @@
 (def db-name "alarm")
 (def alarm-coll "alarm")
 
+(defn- keywordize-channel [notification]
+  (update-in notification [:channel] keyword))
+
 (extend-type MongoDbAlarmRepository
   alarm/AlarmRepository
   (-overdue-alarms [repository now]
-    (mc/find-maps (:db repository) alarm-coll {:at {"$lt" now}}))
-  (-insert [repository alarm-db-entry]
-    (logger/debug "inserting alarm-db-entry" alarm-db-entry)
+    (let [result (mc/find-maps (:db repository) alarm-coll {:at {"$lt" now}})]
+      (->> result
+           (map #(assoc % :notifications
+                        (map keywordize-channel (:notifications result)))))))
+  (-upsert [repository alarm-db-entry]
+    (logger/debug "upserting alarm-db-entry" alarm-db-entry)
+    (mc/remove (:db repository) alarm-coll {:id alarm-db-entry})
     (mc/insert (:db repository) alarm-coll (merge alarm-db-entry {:_id (ObjectId.)})))
   (-delete [repository id]
     (logger/debug "deleting an alarm" id)
@@ -29,12 +37,14 @@
   (-exists? [repository id]
     (mc/find-one (:db repository) alarm-coll {:id id})))
 
-(defmethod integrant/init-key :alarm/repository [_ opts]
+(derive :imesc.alarm.mongodb/repository :imesc.alarm/repository)
+
+(defmethod integrant/init-key :imesc.alarm.mongodb/repository [_ opts]
   (let [connection (mg/connect opts)
         db (mg/get-db connection db-name)]
     (MongoDbAlarmRepository. connection db)))
 
-(defmethod integrant/halt-key! :alarm/repository [_ repository]
+(defmethod integrant/halt-key! :imesc.alarm.mongodb/repository [_ repository]
   (mg/disconnect (:connection repository)))
 
 (extend-protocol monger.conversion/ConvertToDBObject
@@ -48,7 +58,8 @@
     (ZonedDateTime/ofInstant (.toInstant input) (java.time.ZoneId/systemDefault))))
 
 (comment
-  (defn repo [] (:alarm/repository @imesc.config/system))
+  (s/explain satisfies? imesc.alarm/AlarmRepository (MongoDbAlarmRepository. nil nil))
+  (defn repo [] (:imesc.alarm.mongodb/repository (deref (deref #'imesc.config/-system))))
   (defn db [] (:db (repo)))
   (mc/find-maps (db) alarm-coll)
   (mc/remove (db) alarm-coll {:id "finpoint"})

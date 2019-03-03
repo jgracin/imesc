@@ -6,7 +6,7 @@
 
 (s/def :common/zoned-date-time
   (let [l #(.getEpochSecond (Instant/parse %))]
-    (s/with-gen (partial instance? ZonedDateTime)
+    (s/with-gen #(instance? ZonedDateTime %)
       (fn [] (gen/fmap #(.atZone (Instant/ofEpochSecond %)
                                 (ZoneId/systemDefault))
                       (s/gen (s/int-in (- (l "1980-01-01T00:00:00.00Z"))
@@ -40,8 +40,8 @@
                                               :phone-params (s/keys :req-un [:common/phone-number
                                                                              :notification/message])))
 (s/def :notification/notification         (s/keys :req-un [:notification/delay-in-seconds
-                                                         :notification/channel]
-                                                :opt-un [:notifier/params]))
+                                                           :notification/channel]
+                                                  :opt-un [:notifier/params]))
 (s/def :notification/notifications      (s/coll-of :notification/notification))
 (s/def :imesc/process-id                :common/non-empty-string)
 (s/def :imesc/action                    #{:start :stop})
@@ -56,7 +56,7 @@
                                                          :notification/channel]
                                                 :opt-un [:notifier/params]))
 (s/def :alarm/notifications             (s/coll-of :alarm/notification))
-(s/def :imesc/alarm-db-entry            (s/keys :req-un [:alarm/id
+(s/def :alarm/alarm                     (s/keys :req-un [:alarm/id
                                                          :alarm/at
                                                          :alarm/notifications]))
 

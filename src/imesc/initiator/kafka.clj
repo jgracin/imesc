@@ -13,19 +13,19 @@
       vals
       first))
 
-(def kafka-request-polling-fn
+(defn kafka-request-polling-fn [consumer]
   (fn []
-    (->> (poll-request (:kafka/request-consumer (config/system)))
+    (->> (poll-request consumer)
          (map (comp edn/read-string :value)))))
 
-(defmethod integrant/init-key :kafka/request-consumer [_ {:keys [topic consumer-opts]}]
+(defmethod integrant/init-key :imesc.initiator.kafka/request-consumer [_ {:keys [topic consumer-opts]}]
   (let [consumer (client/consumer consumer-opts
                                   (client/string-deserializer)
                                   (client/string-deserializer))]
     (client/subscribe! consumer topic)
     consumer))
 
-(defmethod integrant/halt-key! :kafka/request-consumer [_ consumer]
+(defmethod integrant/halt-key! :imesc.initiator.kafka/request-consumer [_ consumer]
   (client/close! consumer))
 
 (comment

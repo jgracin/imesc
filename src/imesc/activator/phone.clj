@@ -1,7 +1,12 @@
 (ns imesc.activator.phone
-  (:require [clojure.tools.logging :as logger]
-            [imesc.activator :as activator]))
+  (:require [imesc.config :as config]
+            [imesc.activator :as activator]
+            [imesc.activator.kafka :as kafka]
+            [clojure.tools.logging :as logger]))
 
-(defmethod activator/activate :phone [request]
-  (logger/info "Activating phone notifier" request))
+(def partitioning-key :id)
+
+(defmethod activator/activate :phone [_ request]
+  (logger/info "Activating phone notifier" (pr-str request))
+  )
 
