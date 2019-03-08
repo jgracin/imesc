@@ -2,6 +2,7 @@
   (:require [imesc.spec-patch]
             [imesc.initiator :as initiator]
             [imesc.activator :as activator]
+            [imesc.alarm :as alarm]
             [clojure.test :refer :all]
             [clojure.spec.test.alpha :as stest]
             [clojure.spec.alpha :as s]))
@@ -21,6 +22,7 @@
       (is (c `initiator/alarm-db-entry))
       (is (c `initiator/next-action))
       (is (c `activator/->notifier-request))
-      (is (c `activator/due?)))))
+      (is (c `activator/due?))
+      (is (c `alarm/make-alarm)))))
 
 

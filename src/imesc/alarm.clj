@@ -11,6 +11,33 @@
 
 (s/def :imesc/repository #(satisfies? AlarmRepository %))
 
+(defn earliest [times]
+  (reduce (fn [min-so-far t]
+            (if (.isBefore t min-so-far)
+              t
+              min-so-far))
+          (first times)
+          times))
+
+(s/fdef earliest
+  :args (s/cat :times (s/coll-of :common/zoned-date-time))
+  :fn (fn [{:keys [args ret]}]
+        (if (not (empty? (:times args)))
+          (= (first (sort (:times args)))
+             ret)
+          true))
+  :ret (s/nilable :common/zoned-date-time))
+
+(defn make-alarm [id notifications]
+  {:id id
+   :at (->> notifications (map :at) earliest)
+   :notifications notifications})
+
+(s/fdef make-alarm
+  :args (s/cat :id :alarm/id
+               :notifications (s/coll-of :alarm/notification :min-count 1))
+  :ret :alarm/alarm)
+
 (defn overdue-alarms
   "Returns overdue alarms relative to current time provided in `now`."
   [repository now]

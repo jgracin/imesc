@@ -22,13 +22,9 @@
   (assoc m :id (str (UUID/randomUUID))))
 
 (defn alarm-db-entry [id notifications now]
-  (let [sorted-notifications (->> notifications
-                                  (map (partial assign-absolute-time now))
-                                  (map assign-id)
-                                  (sort-by :at))]
-    {:id id
-     :at (-> sorted-notifications first :at)
-     :notifications sorted-notifications}))
+  (alarm/make-alarm id (->> notifications
+                            (map (partial assign-absolute-time now))
+                            (map assign-id))))
 
 (s/fdef alarm-db-entry
   :args (s/cat :id :alarm/id
@@ -39,7 +35,10 @@
                 (count (-> m :ret :notifications)))))
 
 (defn valid? [request]
-  (s/valid? :imesc/request request))
+  (and (s/valid? :imesc/request request)
+       (if (= :start (:action request))
+         (seq (:notifications request))
+         true)))
 
 (defn next-action [request process-already-exists?]
   (cond
@@ -95,7 +94,7 @@
          (logger/debug "processing" (pr-str request))
          (ignoring-exceptions
           (if-not (valid? request)
-            (logger/warn "ignoring invalid request with process-id" (:process-id request))
+            (logger/warn "ignoring invalid request" request)
             (request-processing-fn request)))))
       (when-not (exit-condition-fn) (recur)))
     (logger/info "Main input loop finished.")))

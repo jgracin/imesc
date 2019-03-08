@@ -42,23 +42,6 @@
                :notification :alarm/notification)
   :ret boolean?)
 
-(defn earliest [times]
-  (reduce (fn [min-so-far t]
-            (if (.isBefore t min-so-far)
-              t
-              min-so-far))
-          (first times)
-          times))
-
-(s/fdef earliest
-  :args (s/cat :times (s/coll-of :common/zoned-date-time))
-  :fn (fn [{:keys [args ret]}]
-        (if (not (empty? (:times args)))
-          (= (first (sort (:times args)))
-             ret)
-          true))
-  :ret (s/nilable :common/zoned-date-time))
-
 (defn requests-to-send
   "Returns notifier requests which are due to be sent with respect to the current
   time in `now`."
@@ -74,10 +57,8 @@
   "Returns alarm with pruned notifications based on time `now`."
   [alarm now]
   (let [notifs (remaining-notifications (:notifications alarm) now)]
-    (when notifs
-      (assoc alarm
-             :notifications notifs
-             :at (->> notifs (map :at) earliest)))))
+    (when (seq notifs)
+      (alarm/make-alarm (:id alarm) notifs))))
 
 (defn activate [adapter-registry request]
   (let [handler (get adapter-registry (:channel request))]
@@ -132,5 +113,3 @@
        (Thread/sleep sleep-millis))
       (when-not (exit-condition-fn) (recur)))
     (logger/info "Activator polling finished.")))
-
-

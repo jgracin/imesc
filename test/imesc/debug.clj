@@ -12,7 +12,15 @@
             [orchestra.spec.test]
             [clojure.spec.gen.alpha :as gen]
             [kinsky.client :as client]
-            [imesc.spec-patch]))
+            [imesc.spec-patch]
+            [clojure.spec.alpha :as s]
+            [imesc.alarm :as alarm]))
+
+(comment
+  (first (gen/sample (s/gen :alarm/notification) 1))
+  (orchestra.spec.test/instrument)
+  (alarm/make-alarm "1" (first (gen/sample (s/gen :alarm/notifications) 10)))
+  )
 
 (comment
   "Quartzite scheduler"
@@ -61,12 +69,12 @@
                      {:delay-in-seconds 15
                       :channel :console
                       :params {:message "Second dummy notification to console."}}
-                     {:delay-in-seconds 300
+                     {:delay-in-seconds 30
                       :channel :email
                       :params {:to ["orders@example.com"]
                                :subject "You have unconfirmed new orders in RoomOrders."
                                :body "Visit https://roomorders.com."}}
-                     {:delay-in-seconds 600
+                     {:delay-in-seconds 60
                       :channel :phone
                       :params {:phone-number "38599000001"
                                :message "new-order-unconfirmed"}}]})
@@ -90,7 +98,6 @@
   (mc/insert (db) alarm-coll {:_id (ObjectId.) :id 5 :a (ZonedDateTime/now)})
   (mc/find-one-as-map (db) alarm-coll {:id "finpoint"})
 
-  (alarm/set-alarm (repo) {:at (ZonedDateTime/now) :id "finpoint" :notifications []})
   )
 
 (comment

@@ -42,12 +42,16 @@
 (s/def :notification/notification         (s/keys :req-un [:notification/delay-in-seconds
                                                            :notification/channel]
                                                   :opt-un [:notifier/params]))
-(s/def :notification/notifications      (s/coll-of :notification/notification))
+(s/def :notification/notifications      (s/coll-of :notification/notification :min-count 1))
 (s/def :imesc/process-id                :common/non-empty-string)
 (s/def :imesc/action                    #{:start :stop})
-(s/def :imesc/request                   (s/keys :req-un [:imesc/process-id
-                                                         :imesc/action]
-                                                :opt-un [:notification/notifications]))
+(s/def :imesc/start-request             (s/keys :req-un [:imesc/process-id
+                                                         :imesc/action
+                                                         :notification/notifications]))
+(s/def :imesc/stop-request              (s/keys :req-un [:imesc/process-id
+                                                         :imesc/action]))
+(s/def :imesc/request                   (s/or :start :imesc/start-request
+                                              :stop :imesc/stop-request))
 (s/def :alarm/id                        :common/non-empty-string)
 (s/def :alarm/at                        :common/zoned-date-time)
 (s/def :alarm/notification              (s/keys :req-un [:notification/id

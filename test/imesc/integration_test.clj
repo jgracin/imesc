@@ -93,15 +93,14 @@
     (let [now (ZonedDateTime/now)
           process-id (str (java.util.UUID/randomUUID))
           repo (:imesc.alarm.mongodb/repository (system))
-          alarm {:id process-id :at now
-                 :notifications [{:id "0" :at now
-                                  :channel :console
-                                  :params {:message "0"}
-                                  :delay-in-seconds 1}
-                                 {:id "1" :at (.plusSeconds now 3)
-                                  :channel :console
-                                  :params {:message "1"}
-                                  :delay-in-seconds 1}]}]
+          alarm (alarm/make-alarm process-id [{:id "0" :at now
+                                               :channel :console
+                                               :params {:message "0"}
+                                               :delay-in-seconds 1}
+                                              {:id "1" :at (.plusSeconds now 3)
+                                               :channel :console
+                                               :params {:message "1"}
+                                               :delay-in-seconds 1}])]
       (is (nil? (alarm/exists? repo process-id)))
       (alarm/set-alarm repo alarm)
       (polling-wait
