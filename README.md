@@ -25,6 +25,9 @@ None.
 ...
 
 ## Development
+ 
+Edit the value of KAFKA_ADVERTISED_HOST_NAME variable in docker-compose.yml
+start it all using docker-compose.
 
 Run tests with one of the following:
 
