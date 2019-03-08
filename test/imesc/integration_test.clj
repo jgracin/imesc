@@ -50,8 +50,6 @@
 
 (use-fixtures :each with-instrumentation with-initialized-system)
 
-(def input-topic "imesc.requests")
-
 (defn dummy-start-request [process-id]
   {:action :start
    :process-id process-id
@@ -82,7 +80,7 @@
     (let [process-id (str (java.util.UUID/randomUUID))
           producer (:kafka/producer (system))]
       (logger/info "initiating process id" process-id)
-      (client/send! producer input-topic process-id (dummy-start-request process-id))
+      (client/send! producer config/request-topic process-id (dummy-start-request process-id))
       (client/flush! producer)
       (logger/info "waiting for process id to appear in db" process-id)
       (is (= :success (polling-wait
