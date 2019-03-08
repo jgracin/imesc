@@ -82,14 +82,19 @@ these, we plan to measure how well the code structure maps to these traits.
 * Each notifier receives requests through a notifier-specific Kafka requests
   topic (e.g. topic.email.requests).
 
+## Research questions
+
+- Code optimized for human reading: what does it look like and how do we write
+  it? The code should primarily "talk" to people and not machines.
 
 Measure the following in the code:
 
-1. How easy is it to determine where to start reading the code when trying to find a trait?
+1. How easy is it to determine where to start reading the code when trying to
+   find some property of the software?
 2. How many different functions does one have to open (and start to read) to
-   become reasonably confident that a trait holds?
+   become reasonably confident that a property holds?
 3. How many lines of code does one have to read to become reasonably confident
-   that a trait holds?
+   that a property holds?
 
 ## License
 
