@@ -34,9 +34,20 @@
    :imesc/initiator {:exit-flag (integrant/ref :imesc.core/exit-flag)
                      :request-consumer (integrant/ref :imesc.initiator.kafka/request-consumer)
                      :repository (integrant/ref :imesc.alarm/repository)}
+   :imesc.activator/console-notifier-adapter []
+   :imesc.activator/email-notifier-adapter {:topic email-requests-topic
+                                            :producer (integrant/ref :kafka/producer)}
+   :imesc.activator/phone-notifier-adapter {:topic phone-requests-topic
+                                            :producer (integrant/ref :kafka/producer)}
    :imesc/activator {:exit-flag (integrant/ref :imesc.core/exit-flag)
                      :repository (integrant/ref :imesc.alarm/repository)
                      :producer (integrant/ref :kafka/producer)
+                     :notifier-adapters [{:type :console
+                                          :adapter (integrant/ref :imesc.activator/console-notifier-adapter)}
+                                         {:type :email
+                                          :adapter (integrant/ref :imesc.activator/email-notifier-adapter)}
+                                         {:type :phone
+                                          :adapter (integrant/ref :imesc.activator/phone-notifier-adapter)}]
                      :poll-millis (or (env "ACTIVATOR_POLL_MILLIS") 5000)}})
 
 (defn initialize!

@@ -2,11 +2,11 @@
   (:require [imesc.config :as config]
             [imesc.activator :as activator]
             [imesc.activator.kafka :as kafka]
+            [integrant.core :as integrant]
             [clojure.tools.logging :as logger]))
 
 (def partitioning-key :id)
 
-(defmethod activator/activate :email [_ request]
-  (logger/info "Activating email notifier" (pr-str request))
-  )
-
+(defmethod integrant/init-key :imesc.activator/email-notifier-adapter [_ {:keys [topic producer]}]
+  (fn [request]
+    (logger/info "email-notifier-adapter handling email request to topic" topic request)))

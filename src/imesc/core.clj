@@ -35,12 +35,22 @@
 (defmethod integrant/init-key :imesc.core/exit-flag [_ config]
   (atom false))
 
-(defmethod integrant/init-key :imesc/activator [_ {:keys [exit-flag repository producer poll-millis]}]
+(defn- ->adapter-registry [notifier-adapters]
+  (reduce (fn [m {:keys [type adapter]}]
+            (assoc m type adapter))
+          {}
+          notifier-adapters))
+
+(defmethod integrant/init-key :imesc/activator [_ {:keys [exit-flag repository
+                                                          producer poll-millis
+                                                          notifier-adapters]}]
   (let [activator-loop
-        (activator/make-activator-loop poll-millis
-                                       (fn [] @exit-flag)
-                                       (activator/default-repository-polling-fn repository)
-                                       (activator/default-processing-fn repository producer))]
+        (activator/make-activator-loop
+         poll-millis
+         (fn [] @exit-flag)
+         (activator/default-repository-polling-fn repository)
+         (activator/default-processing-fn repository producer
+                                          (->adapter-registry notifier-adapters)))]
     (future (activator-loop))))
 
 (defmethod integrant/init-key :imesc/initiator [_ {:keys [exit-flag repository request-consumer]}]

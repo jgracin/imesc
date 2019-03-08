@@ -1,7 +1,8 @@
 (ns imesc.activator.console
   (:require [imesc.activator :as activator]
+            [integrant.core :as integrant]
             [clojure.tools.logging :as logger]))
 
-(defmethod activator/activate :console [_ request]
-  (logger/info "Activated CONSOLE notifier:" (pr-str request)))
-
+(defmethod integrant/init-key :imesc.activator/console-notifier-adapter [_ config]
+  (fn [request]
+    (logger/info "console notifier adapter handling request" request)))

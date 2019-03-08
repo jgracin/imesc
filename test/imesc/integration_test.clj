@@ -41,7 +41,7 @@
                       (realized? (:imesc/initiator (system))))))
 
 (defn- fast-activator-polling-configuration [config]
-  (update-in config [:imesc/activator :poll-millis] (fn [_] 100)))
+  (update-in config [:imesc/activator :poll-millis] (fn [_] 200)))
 
 (defn with-initialized-system [f]
   (config/initialize! (fast-activator-polling-configuration config/config))
@@ -98,7 +98,7 @@
                                   :channel :console
                                   :params {:message "0"}
                                   :delay-in-seconds 1}
-                                 {:id "1" :at (.plusSeconds now 1)
+                                 {:id "1" :at (.plusSeconds now 3)
                                   :channel :console
                                   :params {:message "1"}
                                   :delay-in-seconds 1}]}]

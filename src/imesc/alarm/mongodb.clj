@@ -20,20 +20,20 @@
 (defn- keywordize-channel [notification]
   (update-in notification [:channel] keyword))
 
+(defn- deserialize [alarms]
+  (->> alarms
+       (map #(assoc % :notifications
+                    (map keywordize-channel (:notifications %))))))
+
 (extend-type MongoDbAlarmRepository
   alarm/AlarmRepository
   (-overdue-alarms [repository now]
-    (let [result (mc/find-maps (:db repository) alarm-coll {:at {"$lt" now}})]
-      (->> result
-           (map #(assoc % :notifications
-                        (map keywordize-channel (:notifications result)))))))
-  (-upsert [repository alarm-db-entry]
-    (logger/debug "upserting alarm-db-entry" alarm-db-entry)
-    (mc/remove (:db repository) alarm-coll {:id alarm-db-entry})
-    (mc/insert (:db repository) alarm-coll (merge alarm-db-entry {:_id (ObjectId.)})))
+    (deserialize (mc/find-maps (:db repository) alarm-coll {:at {"$lt" now}})))
   (-delete [repository id]
-    (logger/debug "deleting an alarm" id)
     (mc/remove (:db repository) alarm-coll {:id id}))
+  (-upsert [repository alarm-db-entry]
+    (mc/remove (:db repository) alarm-coll {:id (:id alarm-db-entry)})
+    (mc/insert (:db repository) alarm-coll (merge alarm-db-entry {:_id (ObjectId.)})))
   (-exists? [repository id]
     (mc/find-one (:db repository) alarm-coll {:id id})))
 
@@ -56,4 +56,3 @@
   java.util.Date
   (from-db-object [^java.util.Date input keywordize]
     (ZonedDateTime/ofInstant (.toInstant input) (java.time.ZoneId/systemDefault))))
-

@@ -24,7 +24,7 @@
 (defn set-alarm
   "Sets a new alarm."
   [repository alarm-db-entry]
-  (logger/debug "setting alarm" (:id alarm-db-entry))
+  (logger/debug "setting alarm" alarm-db-entry)
   (when-let [report (s/explain-data :alarm/alarm alarm-db-entry)]
     (throw (ex-info "Failed to set alarm!" report)))
   (-upsert repository alarm-db-entry))

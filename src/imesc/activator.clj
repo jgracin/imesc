@@ -23,13 +23,6 @@
   (s/keys :req-un [:notification/id :notification/at :notification/channel
                    :common/phone-number]))
 
-(defmulti activate
-  "Activates notifications through the channel specified in params."
-  (fn [system request] (keyword (:channel request))))
-
-(defmethod activate :default [system request]
-  (logger/error "Unknown notification channel, NOT activating! request=" request))
-
 (defn- ->notifier-request
   [notification]
   (merge (select-keys notification [:id :at :channel])
@@ -49,15 +42,6 @@
                :notification :alarm/notification)
   :ret boolean?)
 
-(defn ->requests [notifications now]
-  (->> (filter (partial due? now) notifications)
-       (map ->notifier-request)))
-
-(s/fdef ->requests
-  :args (s/cat :notifications (s/coll-of :alarm/notification)
-               :now :common/zoned-date-time)
-  :ret (s/coll-of :activator/notifier-request))
-
 (defn earliest [times]
   (reduce (fn [min-so-far t]
             (if (.isBefore t min-so-far)
@@ -76,10 +60,10 @@
   :ret (s/nilable :common/zoned-date-time))
 
 (defn requests-to-send
-  "Returns notifier requests which are due to be sent based on `alarm` and current
+  "Returns notifier requests which are due to be sent with respect to the current
   time in `now`."
-  [alarm now]
-  (->> (:notifications alarm)
+  [notifications now]
+  (->> notifications
        (filter (partial due? now))
        (map ->notifier-request)))
 
@@ -95,18 +79,31 @@
              :notifications notifs
              :at (->> notifs (map :at) earliest)))))
 
-(defn process [repository alarm now]
-  (let [requests (requests-to-send alarm now)]
+(defn activate [adapter-registry request]
+  (let [handler (get adapter-registry (:channel request))]
+    (logger/info "in activate, handling request")
+    (handler request)))
+
+(s/fdef activate
+  :args (s/cat :adapters :activator/adapter-registry
+               :request :activator/notifier-request))
+
+(defn process [repository adapter-registry alarm now]
+  (let [requests (requests-to-send (:notifications alarm) now)]
     (doseq [request requests]
       (ignoring-exceptions
-       (activate nil request))) ;; FIXME
+       (activate adapter-registry request)))
     (let [alarm' (up-to-date-alarm alarm now)]
-      (if (empty? (:notifications alarm'))
+      (cond
+        (empty? (:notifications alarm'))
         (alarm/delete repository (:id alarm))
+
+        (not= (:notifications alarm) (:notifications alarm'))
         (alarm/set-alarm repository alarm')))))
 
 (s/fdef process
   :args (s/cat :repository :imesc/repository
+               :adapters :activator/adapter-registry
                :alarm :alarm/alarm
                :now :common/zoned-date-time)
   :ret any?)
@@ -115,9 +112,9 @@
   (fn []
     (alarm/overdue-alarms repository (ZonedDateTime/now))))
 
-(defn default-processing-fn [repository producer]
+(defn default-processing-fn [repository producer adapter-registry]
   (fn [alarm]
-    (process repository alarm (ZonedDateTime/now))))
+    (process repository adapter-registry alarm (ZonedDateTime/now))))
 
 ;; FIXME We're not locking the repository and we should. Use
 ;; core/repository-lock.

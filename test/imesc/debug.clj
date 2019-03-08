@@ -7,9 +7,11 @@
             [clojurewerkz.quartzite.schedule.simple :as simple]
             [imesc.config :as config]
             [imesc.spec]
+            [monger.collection :as mc]
             [clojure.spec.test.alpha :as stest]
             [orchestra.spec.test]
             [clojure.spec.gen.alpha :as gen]
+            [kinsky.client :as client]
             [imesc.spec-patch]))
 
 (comment
@@ -26,6 +28,69 @@
                                          (simple/with-repeat-count 10)
                                          (simple/with-interval-in-milliseconds 1000)))))
   (scheduler/schedule s job1 trigger)
+  )
+
+(comment
+  (def ac (AdminClient/create {"bootstrap.servers" "localhost:9092"}))
+  (-> ac (.createTopics #{(NewTopic. "imesc.requests" 1 1)}))
+  (-> ac (.deleteTopics #{"imesc.requests"}))
+  (-> ac .listTopics .names deref)
+  (-> ac .listConsumerGroups .all deref)
+  (-> ac (.describeTopics #{"imesc.requests"}) .all deref)
+  (-> ac .describeCluster .controller deref)
+  (-> ac .describeCluster .nodes deref)
+  (-> ac .close)
+  (consumer-group-offsets ac "orderProcessor")
+  (-> ac (.listConsumerGroupOffsets "orderProcessor"))
+
+  (def producer
+    (client/producer {:bootstrap.servers "localhost:9092"
+                      :batch.size 0
+                      :acks "all"
+                      :max.block.ms 5000
+                      :request.timeout.ms 5000}
+                     (client/string-serializer)
+                     (client/edn-serializer)))
+
+  (def sample-start-request
+    {:action :start
+     :process-id "finpoint"
+     :notifications [{:delay-in-seconds 10
+                      :channel :console
+                      :params {:message "First dummy notification to console."}}
+                     {:delay-in-seconds 15
+                      :channel :console
+                      :params {:message "Second dummy notification to console."}}
+                     {:delay-in-seconds 300
+                      :channel :email
+                      :params {:to ["orders@example.com"]
+                               :subject "You have unconfirmed new orders in RoomOrders."
+                               :body "Visit https://roomorders.com."}}
+                     {:delay-in-seconds 600
+                      :channel :phone
+                      :params {:phone-number "38599000001"
+                               :message "new-order-unconfirmed"}}]})
+  (def sample-stop-request
+    {:action :stop
+     :process-id "finpoint"})
+  (client/send! producer "imesc.requests" "key1" sample-start-request)
+  (client/send! producer "imesc.requests" "key1" sample-stop-request)
+
+  )
+
+(comment
+  (s/explain satisfies? imesc.alarm/AlarmRepository (MongoDbAlarmRepository. nil nil))
+  (defn repo [] (:imesc.alarm.mongodb/repository (deref (deref #'imesc.config/-system))))
+  (defn db [] (:db (repo)))
+  (mc/find-maps (db) alarm-coll)
+  (mc/remove (db) alarm-coll {:id "finpoint"})
+  (alarm/-overdue-alarms (repo) (.plusMinutes (ZonedDateTime/now) 0))
+  (let [now (.minusMonths (ZonedDateTime/now) 5)]
+    (mc/find-maps (db) alarm-coll {:at {"$lt" now}}))
+  (mc/insert (db) alarm-coll {:_id (ObjectId.) :id 5 :a (ZonedDateTime/now)})
+  (mc/find-one-as-map (db) alarm-coll {:id "finpoint"})
+
+  (alarm/set-alarm (repo) {:at (ZonedDateTime/now) :id "finpoint" :notifications []})
   )
 
 (comment
