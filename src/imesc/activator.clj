@@ -136,11 +136,4 @@
       (when-not (exit-condition-fn) (recur)))
     (logger/info "Activator polling finished.")))
 
-(comment
-  (gen/sample (s/gen :alarm/notification))
 
-  (let [activator-loop (make-activator-loop)]
-    (future (activator-loop)))
-
-  (ns-unmap *ns* 'activate)
-  )

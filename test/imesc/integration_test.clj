@@ -107,15 +107,4 @@
       (polling-wait
        #(nil? (alarm/exists? repo process-id))))))
 
-(comment
-  (reset! (:imesc.core/exit-flag (system)) true)
-  (config/halt!)
-  (config/initialize!)
 
-  (def p (create-producer))
-  (let [process-id (str (java.util.UUID/randomUUID))]
-    (client/send! p input-topic process-id (dummy-start-request process-id)))
-  (:imesc.core/exit-flag (system))
-  (reset! (:imesc.core/exit-flag (system)) true)
-  (integrant/halt! @config/-system)
-  )

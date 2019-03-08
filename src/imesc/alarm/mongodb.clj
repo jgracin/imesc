@@ -57,18 +57,3 @@
   (from-db-object [^java.util.Date input keywordize]
     (ZonedDateTime/ofInstant (.toInstant input) (java.time.ZoneId/systemDefault))))
 
-(comment
-  (s/explain satisfies? imesc.alarm/AlarmRepository (MongoDbAlarmRepository. nil nil))
-  (defn repo [] (:imesc.alarm.mongodb/repository (deref (deref #'imesc.config/-system))))
-  (defn db [] (:db (repo)))
-  (mc/find-maps (db) alarm-coll)
-  (mc/remove (db) alarm-coll {:id "finpoint"})
-  (alarm/-overdue-alarms (repo) (.plusMinutes (ZonedDateTime/now) 0))
-  (let [now (.minusMonths (ZonedDateTime/now) 5)]
-    (mc/find-maps (db) alarm-coll {:at {"$lt" now}}))
-  (mc/insert (db) alarm-coll "abc")
-  (mc/find-one (db) alarm-coll {:id "2580f5b5-db89-49e4-b762-66a0144de9d9"})
-
-  (alarm/set-alarm (repo) {:at (ZonedDateTime/now) :id "finpoint" :notifications []})
-
-  )

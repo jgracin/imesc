@@ -47,16 +47,4 @@
   (let [initiator-loop (make-kafka-based-main-input-loop repository request-consumer (fn [] @exit-flag))]
     (future (initiator-loop))))
 
-(comment
-  (-main)
-  (config/initialize!)
-  (defn system [] (deref (deref #'config/-system)))
-  (reset! (:imesc.core/exit-flag (system)) true)
-  (reset! (:imesc.core/exit-flag (system)) false)
-  (config/halt!)
-  (-> config/config integrant/prep (integrant/init [:imesc/initiator]))
-  (-> config/config integrant/prep (integrant/init [:imesc/activator]))
 
-  (activator/activate {:id "3f18c862-5406-4246-a15c-33205966b06b" :at (java.time.ZonedDateTime/now),
-                       :channel "phone" :phone-number "38599000001" :message "new-order-unconfirmed"})
-  )
