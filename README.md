@@ -39,7 +39,10 @@ lein test :all
 
 The first form should run only unit tests.
 
-## Design Decisions
+## Architecture Design Decisions
+
+A couple of figures describing the architecture are available at
+https://docs.google.com/presentation/d/1Cmr7JoAIsXd-TICzrGD2m2uoIcWusZinUafNQkIXm2o/edit?usp=sharing.
 
 We are not using multiple instances of the service because we would have to
 coordinate multiple schedulers.
