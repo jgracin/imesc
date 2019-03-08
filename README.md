@@ -1,20 +1,20 @@
 # imesc
 
-Escalation System.
+Escalation System.  See section "Specification" below.
+
+This project is currently a research playground.
 
 ## Installation
 
-TODOs
+TODO
 
 ## Usage
-
-FIXME: explanation
 
     $ java -jar imesc-0.1.0-standalone.jar [args]
 
 ## Options
 
-FIXME: listing of options this app accepts.
+None.
 
 ## Examples
 
@@ -32,7 +32,7 @@ Run tests with one of the following:
 lein test
 lein test :integration
 lein test :all
-``**
+```
 
 The first form should run only unit tests.
 
