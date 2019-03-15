@@ -95,12 +95,14 @@
                                                :channel :console
                                                :params {:message "0"}
                                                :delay-in-seconds 1}
-                                              {:id "1" :at (.plusSeconds now 3)
-                                               :channel :console
-                                               :params {:message "1"}
-                                               :delay-in-seconds 1}])]
+                                              {:id "1" :at (.plusSeconds now 1)
+                                               :channel :phone
+                                               :params {:phone-number "099111111" :message "m"}
+                                               :delay-in-seconds 2}])]
       (is (nil? (alarm/exists? repo process-id)))
+      (logger/info "creating process in db" process-id)
       (alarm/set-alarm repo alarm)
+      (logger/info "waiting for process to complete, i.e. disappear from db" process-id)
       (polling-wait
        #(nil? (alarm/exists? repo process-id))))))
 

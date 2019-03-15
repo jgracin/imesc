@@ -70,7 +70,6 @@
       :ignore-request
       (logger/debug "ignoring request for process" pid "because it does not change state")
 
-      :else
       (logger/error "BUG: unknown scenario"))))
 
 (defn make-main-input-loop

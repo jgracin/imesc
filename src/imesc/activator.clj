@@ -25,7 +25,7 @@
 
 (defn- ->notifier-request
   [notification]
-  (merge (select-keys notification [:id :at :channel])
+  (merge (dissoc notification :params)
          (:params notification)))
 
 (s/fdef ->notifier-request
@@ -42,52 +42,64 @@
                :notification :alarm/notification)
   :ret boolean?)
 
-(defn requests-to-send
-  "Returns notifier requests which are due to be sent with respect to the current
-  time in `now`."
-  [notifications now]
-  (->> notifications
-       (filter (partial due? now))
-       (map ->notifier-request)))
+(defn- due [now notifications]
+  (filter (partial due? now) notifications))
 
-(defn remaining-notifications [notifications now]
-  (filter (complement (partial due? now)) notifications))
+(defn- decide [now notifications]
+  (let [remaining-notifs (filter #(not (due? now %)) notifications)]
+    (cond
+      (empty? notifications)
+      {:decision :ignore}
 
-(defn up-to-date-alarm
-  "Returns alarm with pruned notifications based on time `now`."
-  [alarm now]
-  (let [notifs (remaining-notifications (:notifications alarm) now)]
-    (when (seq notifs)
-      (alarm/make-alarm (:id alarm) notifs))))
+      (empty? remaining-notifs)
+      {:decision :finish-the-process}
 
-(defn activate [adapter-registry request]
-  (let [handler (get adapter-registry (:channel request))]
-    (logger/info "in activate, handling request")
-    (handler request)))
+      (not= remaining-notifs notifications)
+      {:decision :update-state :notifications remaining-notifs}
 
-(s/fdef activate
-  :args (s/cat :adapters :activator/adapter-registry
-               :request :activator/notifier-request))
+      :else
+      {:decision :ignore})))
+
+(s/def :activator/decision #{:finish-the-process :ignore :update-state})
+
+(s/fdef decide
+  :args (s/cat :now :common/zoned-date-time
+               :notifications :alarm/notifications)
+  :fn (fn [{:keys [args ret]}]
+        (if (empty? (:notifications args))
+          (= :ignore (:decision ret))
+          true))
+  :ret (s/keys :req-un [:activator/decision]))
+
+(defn- find-handler [adapter-registry activator-channel]
+  (get adapter-registry activator-channel))
 
 (defn process [repository adapter-registry alarm now]
-  (let [requests (requests-to-send (:notifications alarm) now)]
-    (doseq [request requests]
-      (ignoring-exceptions
-       (activate adapter-registry request)))
-    (let [alarm' (up-to-date-alarm alarm now)]
-      (cond
-        (empty? (:notifications alarm'))
-        (alarm/delete repository (:id alarm))
+  (doseq [request (->> (:notifications alarm)
+                       (due now)
+                       (map ->notifier-request))]
+    (let [handler (find-handler adapter-registry (:channel request))]
+      (when (nil? handler)
+        (throw (ex-info "BUG: unable to find activator handler for channel" (:channel request))))
+      (ignoring-exceptions (handler request))))
+  (let [result (decide now (:notifications alarm))]
+    (case (:decision result)
+      :finish-the-process
+      (alarm/delete repository (:id alarm))
 
-        (not= (:notifications alarm) (:notifications alarm'))
-        (alarm/set-alarm repository alarm')))))
+      :update-state
+      (alarm/set-alarm repository (alarm/make-alarm (:id alarm) (:notifications result)))
+
+      :ignore
+      nil
+
+      (logger/error "BUG: unrecognized result" result))))
 
 (s/fdef process
   :args (s/cat :repository :imesc/repository
                :adapters :activator/adapter-registry
                :alarm :alarm/alarm
-               :now :common/zoned-date-time)
-  :ret any?)
+               :now :common/zoned-date-time))
 
 (defn default-repository-polling-fn [repository]
   (fn []

@@ -14,12 +14,17 @@
             [kinsky.client :as client]
             [imesc.spec-patch]
             [clojure.spec.alpha :as s]
-            [imesc.alarm :as alarm]))
+            [imesc.alarm :as alarm])
+  (:import java.time.ZonedDateTime))
 
 (comment
   (first (gen/sample (s/gen :alarm/notification) 1))
   (orchestra.spec.test/instrument)
   (alarm/make-alarm "1" (first (gen/sample (s/gen :alarm/notifications) 10)))
+
+  (s/explain-data :activator/notifier-request {:id "1" :at (ZonedDateTime/now) :channel :email})
+
+  (gen/sample (s/gen (s/coll-of :alarm/notification :min-count 1)))
   )
 
 (comment
