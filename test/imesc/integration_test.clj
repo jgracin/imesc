@@ -75,35 +75,51 @@
                    (client/string-serializer)
                    (client/edn-serializer)))
 
+(defn- suppose-there-is-an-input-request [ctx]
+  (let [process-id (str (java.util.UUID/randomUUID))
+        producer (:kafka/producer (system))]
+    (logger/info "initiating process id" process-id)
+    (client/send! producer config/request-topic process-id (dummy-start-request process-id))
+    (client/flush! producer)
+    (merge ctx {:process-id process-id})))
+
+(defn- verify-that-the-request-starts-a-process [ctx]
+  (logger/info "waiting for process id to appear in db" (:process-id ctx))
+  (is (= :success (polling-wait
+                   #(alarm/exists? (:repo ctx) (:process-id ctx))))))
+
 (deftest ^:integration basic-system-test
   (testing "successfully creating a new escalation process"
-    (let [process-id (str (java.util.UUID/randomUUID))
-          producer (:kafka/producer (system))]
-      (logger/info "initiating process id" process-id)
-      (client/send! producer config/request-topic process-id (dummy-start-request process-id))
-      (client/flush! producer)
-      (logger/info "waiting for process id to appear in db" process-id)
-      (is (= :success (polling-wait
-                       #(alarm/exists? (:imesc.alarm.mongodb/repository (system)) process-id)))))))
+    (let [ctx {:repo (:imesc.alarm.mongodb/repository (system))}]
+      (-> ctx
+          suppose-there-is-an-input-request
+          verify-that-the-request-starts-a-process))))
 
-(deftest ^:integration activator
-  (testing "successfully processing activations"
-    (let [now (ZonedDateTime/now)
-          process-id (str (java.util.UUID/randomUUID))
-          repo (:imesc.alarm.mongodb/repository (system))
-          alarm (alarm/make-alarm process-id [{:id "0" :at now
-                                               :channel :console
-                                               :params {:message "0"}
-                                               :delay-in-seconds 1}
-                                              {:id "1" :at (.plusSeconds now 1)
-                                               :channel :phone
-                                               :params {:phone-number "099111111" :message "m"}
-                                               :delay-in-seconds 2}])]
-      (is (nil? (alarm/exists? repo process-id)))
-      (logger/info "creating process in db" process-id)
-      (alarm/set-alarm repo alarm)
-      (logger/info "waiting for process to complete, i.e. disappear from db" process-id)
-      (polling-wait
-       #(nil? (alarm/exists? repo process-id))))))
+(defn- suppose-there-is-an-active-process [ctx]
+  (let [now (ZonedDateTime/now)
+        process-id (str (java.util.UUID/randomUUID))
+        alarm (alarm/make-alarm process-id [{:id "0" :at now
+                                             :channel :console
+                                             :params {:message "0"}
+                                             :delay-in-seconds 1}
+                                            {:id "1" :at (.plusSeconds now 1)
+                                             :channel :phone
+                                             :params {:phone-number "099111111" :message "m"}
+                                             :delay-in-seconds 2}])]
+    (is (nil? (alarm/exists? (:repo ctx) process-id)))
+    (logger/info "creating process in db" process-id)
+    (alarm/set-alarm (:repo ctx) alarm)
+    (merge ctx {:process-id process-id})))
 
+(defn- verify-that-the-process-eventually-finishes [ctx]
+  (logger/info "waiting for process to complete, i.e. disappear from db" (:process-id ctx))
+  (polling-wait
+   #(nil? (alarm/exists? (:repo ctx) (:process-id ctx))))
+  ctx)
 
+(deftest ^:integration activator-processing
+  (testing "successfully processing of active processes"
+    (let [ctx {:repo (:imesc.alarm.mongodb/repository (system))}]
+      (-> ctx
+          suppose-there-is-an-active-process
+          verify-that-the-process-eventually-finishes))))
