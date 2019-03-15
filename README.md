@@ -1,5 +1,7 @@
 # imesc
 
+[![CircleCI](https://circleci.com/gh/jgracin/imesc.svg?style=svg)](https://circleci.com/gh/jgracin/imesc)
+
 IMESC is an escalation system. It raises notifications based on requested
 schedules.
 
