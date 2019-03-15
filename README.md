@@ -1,8 +1,19 @@
 # imesc
 
-Escalation System.  See section "Specification" below.
+IMESC is an escalation system. It raises notifications based on requested
+schedules.
 
-This project is currently a research playground.
+This project is currently a research playground. The central research question
+is to establish what do programs optimized for human reading look like and
+how such programs should be written. This is based on various previous ideas,
+primarily on the following idea from the classic textbook "Structure and
+Interpretation of Computer Programs" (by H.Abelson and G.J.Sussman):
+
+   "First, we want to establish the idea that a computer language is not just a
+   way of getting a computer to perform operations but rather that it is a novel
+   formal medium for expressing ideas about methodology. Thus, programs must be
+   written for people to read, and only incidentally for machines to execute."
+
 
 ## Installation
 
@@ -59,8 +70,9 @@ reasons stated above.
 
 ## Specification
 
-This section contains specification of various traits of this software. Based on
-these, we plan to measure how well the code structure maps to these traits.
+We tried to write the specification in the style optimized for humans to read
+and understand and we plan to measure how well the code structure maps to the
+specification.
 
 * The system operates in three phases: receiving requests to initiate escalation
   processes, activating scheduled notifications when their time comes, and
@@ -87,11 +99,6 @@ these, we plan to measure how well the code structure maps to these traits.
 * There are three notifiers: email, phone call and console printer.
 * Each notifier receives requests through a notifier-specific Kafka requests
   topic (e.g. topic.email.requests).
-
-## Research questions
-
-- Code optimized for human reading: what does it look like and how do we write
-  it? The code should primarily "talk" to people and not machines.
 
 Measure the following in the code:
 
