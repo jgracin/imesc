@@ -10,29 +10,8 @@
             [imesc.util :refer [ignoring-exceptions ignoring-exceptions-but-with-sleep]]
             [imesc.config :as config]
             [imesc.alarm :as alarm]
-            [imesc.alarm.mongodb]
-            [environ.core :refer [env]])
-  (:import (java.time ZonedDateTime ZoneId Instant)
-           java.util.UUID))
-
-(defn assign-absolute-time [now notification]
-  (assoc notification :at (.plusSeconds now (:delay-in-seconds notification))))
-
-(defn assign-id [m]
-  (assoc m :id (str (UUID/randomUUID))))
-
-(defn alarm-db-entry [id notifications now]
-  (alarm/make-alarm id (->> notifications
-                            (map (partial assign-absolute-time now))
-                            (map assign-id))))
-
-(s/fdef alarm-db-entry
-  :args (s/cat :id :alarm/id
-               :notifications (s/coll-of :notification/notification :min-count 1)
-               :now :common/zoned-date-time)
-  :ret :alarm/alarm
-  :fn (fn [m] (= (count (-> m :args :notifications))
-                (count (-> m :ret :notifications)))))
+            [imesc.alarm.mongodb])
+  (:import (java.time ZonedDateTime ZoneId Instant)))
 
 (defn valid? [request]
   (and (s/valid? :imesc/request request)
@@ -62,7 +41,7 @@
         now (java.time.ZonedDateTime/now)]
     (case (next-action request process-already-exists?)
       :create-new-process
-      (alarm/set-alarm r (alarm-db-entry (:process-id request) (:notifications request) now))
+      (alarm/set-alarm r (:process-id request) (:notifications request) now)
 
       :cancel-process
       (alarm/delete r pid)

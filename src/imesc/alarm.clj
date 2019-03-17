@@ -1,7 +1,8 @@
 (ns imesc.alarm
   (:require [clojure.spec.alpha :as s]
             [clojure.tools.logging :as logger]
-            [imesc.spec]))
+            [imesc.spec])
+  (:import java.util.UUID))
 
 (defprotocol AlarmRepository
   (-overdue-alarms [_ now])
@@ -48,13 +49,33 @@
                :now :common/zoned-date-time)
   :ret (s/coll-of :alarm/alarm))
 
+(defn assign-absolute-time [now notification]
+  (assoc notification :at (.plusSeconds now (:delay-in-seconds notification))))
+
+(defn assign-id [m]
+  (assoc m :id (str (UUID/randomUUID))))
+
+(defn alarm-db-entry [id notifications now]
+  (make-alarm id (->> notifications
+                      (map (partial assign-absolute-time now))
+                      (map assign-id))))
+
+(s/fdef alarm-db-entry
+  :args (s/cat :id :alarm/id
+               :notifications (s/coll-of :notification/notification :min-count 1)
+               :now :common/zoned-date-time)
+  :ret :alarm/alarm
+  :fn (fn [m] (= (count (-> m :args :notifications))
+                (count (-> m :ret :notifications)))))
+
 (defn set-alarm
   "Sets a new alarm."
-  [repository alarm-db-entry]
-  (logger/debug "setting alarm" alarm-db-entry)
-  (when-let [report (s/explain-data :alarm/alarm alarm-db-entry)]
-    (throw (ex-info "Failed to set alarm!" report)))
-  (-upsert repository alarm-db-entry))
+  [repository process-id notifications current-time]
+  (let [entry (alarm-db-entry process-id notifications current-time)]
+    (logger/debug "setting alarm" entry)
+    (when-let [report (s/explain-data :alarm/alarm entry)]
+      (throw (ex-info "Failed to set alarm!" report)))
+    (-upsert repository entry)))
 
 (defn delete
   "Deletes an alarm."

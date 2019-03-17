@@ -89,7 +89,7 @@
                    #(alarm/exists? (:repo ctx) (:process-id ctx))))))
 
 (deftest ^:integration basic-system-test
-  (testing "successfully creating a new escalation process"
+  (testing "successfully creating new escalation process"
     (let [ctx {:repo (:imesc.alarm.mongodb/repository (system))}]
       (-> ctx
           suppose-there-is-an-input-request
@@ -98,17 +98,18 @@
 (defn- suppose-there-is-an-active-process [ctx]
   (let [now (ZonedDateTime/now)
         process-id (str (java.util.UUID/randomUUID))
-        alarm (alarm/make-alarm process-id [{:id "0" :at now
-                                             :channel :console
-                                             :params {:message "0"}
-                                             :delay-in-seconds 1}
-                                            {:id "1" :at (.plusSeconds now 1)
-                                             :channel :phone
-                                             :params {:phone-number "099111111" :message "m"}
-                                             :delay-in-seconds 2}])]
+        notifications [{:id "0"
+                        :channel :console
+                        :params {:message "0"}
+                        :delay-in-seconds 1}
+                       {:id "1"
+                        :channel :phone
+                        :params {:phone-number "099111111"
+                                 :message "m"}
+                        :delay-in-seconds 2}]]
     (is (nil? (alarm/exists? (:repo ctx) process-id)))
     (logger/info "creating process in db" process-id)
-    (alarm/set-alarm (:repo ctx) alarm)
+    (alarm/set-alarm (:repo ctx) process-id notifications now)
     (merge ctx {:process-id process-id})))
 
 (defn- verify-that-the-process-eventually-finishes [ctx]
@@ -118,7 +119,7 @@
   ctx)
 
 (deftest ^:integration activator-processing
-  (testing "successfully processing of active processes"
+  (testing "successful handling of active processes"
     (let [ctx {:repo (:imesc.alarm.mongodb/repository (system))}]
       (-> ctx
           suppose-there-is-an-active-process

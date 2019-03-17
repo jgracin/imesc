@@ -88,7 +88,7 @@
       (alarm/delete repository (:id alarm))
 
       :update-state
-      (alarm/set-alarm repository (alarm/make-alarm (:id alarm) (:notifications result)))
+      (alarm/set-alarm repository (:id alarm) (:notifications result) now)
 
       :ignore
       nil

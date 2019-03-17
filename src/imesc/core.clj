@@ -10,7 +10,8 @@
             [imesc.activator.email]
             [imesc.activator.phone]
             [integrant.core :as integrant]
-            [environ.core :refer [env]]))
+            [environ.core :refer [env]])
+  (:gen-class))
 
 ;; We must synchronize alarm repository access between the Initiator and the
 ;; Activator to avoid race conditions when canceling and updating alarms.
@@ -23,14 +24,6 @@
    (fn [request]
      (locking repository-lock
        (initiator/process-request repository request)))))
-
-(defn -main
-  "Starts the system."
-  [& args]
-  (logger/info "Starting...")
-  (let [system (config/initialize!)]
-    (.addShutdownHook (Runtime/getRuntime)
-                      (Thread. #(reset! (:exit-flag system) true)))))
 
 (defmethod integrant/init-key :imesc.core/exit-flag [_ config]
   (atom false))
@@ -57,4 +50,10 @@
   (let [initiator-loop (make-kafka-based-main-input-loop repository request-consumer (fn [] @exit-flag))]
     (future (initiator-loop))))
 
-
+(defn -main
+  "Starts the system."
+  [& args]
+  (logger/info "Starting...")
+  (let [system (config/initialize!)]
+    (.addShutdownHook (Runtime/getRuntime)
+                      (Thread. #(reset! (:exit-flag system) true)))))

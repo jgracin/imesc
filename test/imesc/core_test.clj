@@ -20,7 +20,7 @@
                   (throw (:failure result))
                   true)))]
       (is (c `activator/decide))
-      (is (c `initiator/alarm-db-entry))
+      (is (c `alarm/alarm-db-entry))
       (is (c `initiator/next-action))
       (is (c `activator/->notifier-request))
       (is (c `activator/due?))

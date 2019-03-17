@@ -16,6 +16,8 @@
 
 (def phone-requests-topic (or (env "PHONE_REQUESTS_TOPIC" "imesc.phone-requests")))
 
+(def activator-poll-millis (or (env "ACTIVATOR_POLL_MILLIS") 5000))
+
 (def config
   {:imesc.core/exit-flag nil
    :imesc.initiator.kafka/request-consumer {:topic request-topic
@@ -34,7 +36,7 @@
    :imesc/initiator {:exit-flag (integrant/ref :imesc.core/exit-flag)
                      :request-consumer (integrant/ref :imesc.initiator.kafka/request-consumer)
                      :repository (integrant/ref :imesc.alarm/repository)}
-   :imesc.activator/console-notifier-adapter []
+   :imesc.activator/console-notifier-adapter nil
    :imesc.activator/email-notifier-adapter {:topic email-requests-topic
                                             :producer (integrant/ref :kafka/producer)}
    :imesc.activator/phone-notifier-adapter {:topic phone-requests-topic
@@ -48,7 +50,7 @@
                                           :adapter (integrant/ref :imesc.activator/email-notifier-adapter)}
                                          {:type :phone
                                           :adapter (integrant/ref :imesc.activator/phone-notifier-adapter)}]
-                     :poll-millis (or (env "ACTIVATOR_POLL_MILLIS") 5000)}})
+                     :poll-millis activator-poll-millis}})
 
 (defn initialize!
   ([]
