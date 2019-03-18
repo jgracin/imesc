@@ -4,6 +4,7 @@
             [imesc.config :as config]
             [imesc.initiator :as initiator]
             [imesc.spec]
+            [imesc.activator.spec]
             [imesc.alarm :as alarm]
             [imesc.util :as util :refer [ignoring-exceptions-but-with-sleep
                                          ignoring-exceptions]]
@@ -88,7 +89,7 @@
       (alarm/delete repository (:id alarm))
 
       :update-state
-      (alarm/set-alarm repository (:id alarm) (:notifications result) now)
+      (alarm/set-alarm repository now (:id alarm) (:notifications result))
 
       :ignore
       nil

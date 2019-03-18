@@ -41,7 +41,7 @@
         now (java.time.ZonedDateTime/now)]
     (case (next-action request process-already-exists?)
       :create-new-process
-      (alarm/set-alarm r (:process-id request) (:notifications request) now)
+      (alarm/set-alarm r now (:process-id request) (:notifications request))
 
       :cancel-process
       (alarm/delete r pid)

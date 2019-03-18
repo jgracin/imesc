@@ -62,7 +62,7 @@
 
 (s/fdef alarm-db-entry
   :args (s/cat :id :alarm/id
-               :notifications (s/coll-of :notification/notification :min-count 1)
+               :notifications (s/coll-of :imesc.request/notification :min-count 1)
                :now :common/zoned-date-time)
   :ret :alarm/alarm
   :fn (fn [m] (= (count (-> m :args :notifications))
@@ -70,20 +70,26 @@
 
 (defn set-alarm
   "Sets a new alarm."
-  [repository process-id notifications current-time]
+  [repository current-time process-id notifications]
   (let [entry (alarm-db-entry process-id notifications current-time)]
     (logger/debug "setting alarm" entry)
     (when-let [report (s/explain-data :alarm/alarm entry)]
       (throw (ex-info "Failed to set alarm!" report)))
     (-upsert repository entry)))
 
+(s/fdef set-alarm
+  :args (s/cat :repository :imesc/repository
+               :current-time :common/zoned-date-time
+               :process-id :imesc/process-id
+               :notifications :imesc.request/notifications))
 (defn delete
-  "Deletes an alarm."
-  [repository alarm-id]
-  (logger/debug "deleting alarm" alarm-id)
-  (-delete repository alarm-id))
+  "Deletes all alarms for process-id."
+  [repository process-id]
+  (logger/debug "deleting alarms for process" process-id)
+  (-delete repository process-id))
 
 (defn exists?
-  "Returns non-nil if alarm exists."
-  [repository alarm-id]
-  (-exists? repository alarm-id))
+  "Returns non-nil if any alarm for process exists."
+  [repository process-id]
+  (-exists? repository process-id))
+

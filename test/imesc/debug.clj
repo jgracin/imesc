@@ -7,6 +7,8 @@
             [clojurewerkz.quartzite.schedule.simple :as simple]
             [imesc.config :as config]
             [imesc.spec]
+            [imesc.activator.spec]
+            [imesc.alarm.spec]
             [monger.collection :as mc]
             [clojure.spec.test.alpha :as stest]
             [orchestra.spec.test]

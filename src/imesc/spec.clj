@@ -26,7 +26,7 @@
                       (str username "@" subdomain ".com"))
                     (s/gen (s/tuple :common/non-empty-string
                                     :common/non-empty-string))))))
-(s/def :email/to                        (s/coll-of :email/address))
+(s/def :email/to                        (s/coll-of :email/address :min-count 1))
 (s/def :email/subject                   :common/non-empty-string)
 (s/def :email/body                      :common/non-empty-string)
 (s/def :notification/message            :common/non-empty-string)
@@ -39,32 +39,16 @@
                                                                              :email/body])
                                               :phone-params (s/keys :req-un [:common/phone-number
                                                                              :notification/message])))
-(s/def :notification/notification         (s/keys :req-un [:notification/delay-in-seconds
-                                                           :notification/channel]
-                                                  :opt-un [:notifier/params]))
-(s/def :notification/notifications      (s/coll-of :notification/notification :min-count 1))
 (s/def :imesc/process-id                :common/non-empty-string)
-(s/def :imesc/action                    #{:start :stop})
-(s/def :imesc/start-request             (s/keys :req-un [:imesc/process-id
-                                                         :imesc/action
-                                                         :notification/notifications]))
-(s/def :imesc/stop-request              (s/keys :req-un [:imesc/process-id
-                                                         :imesc/action]))
-(s/def :imesc/request                   (s/or :start :imesc/start-request
-                                              :stop :imesc/stop-request))
-(s/def :alarm/id                        :common/non-empty-string)
-(s/def :alarm/at                        :common/zoned-date-time)
-(s/def :alarm/notification              (s/keys :req-un [:notification/id
-                                                         :alarm/at
-                                                         :notification/delay-in-seconds
+(s/def :imesc.request/notification      (s/keys :req-un [:notification/delay-in-seconds
                                                          :notification/channel]
                                                 :opt-un [:notifier/params]))
-(s/def :alarm/notifications             (s/coll-of :alarm/notification))
-(s/def :alarm/alarm                     (s/keys :req-un [:alarm/id
-                                                         :alarm/at
-                                                         :alarm/notifications]))
-
-(s/def :activator/notifier-request      (s/or :console :notifier/console-request
-                                              :phone :notifier/phone-request
-                                              :email :notifier/email-request))
-(s/def :activator/adapter-registry (s/map-of :notification/channel ifn?))
+(s/def :imesc.request/notifications     (s/coll-of :imesc.request/notification :min-count 1))
+(s/def :imesc.request/action            #{:start :stop})
+(s/def :imesc.request/start-request     (s/keys :req-un [:imesc/process-id
+                                                         :imesc.request/action
+                                                         :imesc.request/notifications]))
+(s/def :imesc.request/stop-request      (s/keys :req-un [:imesc/process-id
+                                                         :imesc.request/action]))
+(s/def :imesc/request                   (s/or :start :imesc.request/start-request
+                                              :stop :imesc.request/stop-request))

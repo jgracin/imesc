@@ -109,7 +109,7 @@
                         :delay-in-seconds 2}]]
     (is (nil? (alarm/exists? (:repo ctx) process-id)))
     (logger/info "creating process in db" process-id)
-    (alarm/set-alarm (:repo ctx) process-id notifications now)
+    (alarm/set-alarm (:repo ctx) now process-id notifications)
     (merge ctx {:process-id process-id})))
 
 (defn- verify-that-the-process-eventually-finishes [ctx]

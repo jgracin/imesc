@@ -1,5 +1,6 @@
 (ns imesc.alarm.mongodb
   (:require [imesc.alarm :as alarm]
+            [imesc.alarm.spec]
             [monger.core :as mg]
             [monger.collection :as mc]
             [integrant.core :as integrant]
