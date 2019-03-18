@@ -1,7 +1,8 @@
 (ns imesc.alarm
   (:require [clojure.spec.alpha :as s]
             [clojure.tools.logging :as logger]
-            [imesc.spec])
+            [imesc.spec]
+            [imesc.alarm.spec])
   (:import java.util.UUID))
 
 (defprotocol AlarmRepository
