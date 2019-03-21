@@ -113,7 +113,7 @@ Measure the following in the code:
 
 ## License
 
-Copyright © 2018 Ingemark d.o.o.
+Copyright © 2019 Josip Gracin
 
 Distributed under the Eclipse Public License either version 1.0 or (at
 your option) any later version.
